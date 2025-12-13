@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import HistoriaClinicaModal from './HistoriaClinicaModal';
 import { Users, CalendarCheck, FileText, LayoutDashboard, UserCircle, PlusCircle, Activity, Edit, Trash2, Info, Download } from 'lucide-react';
+import TurnoModal from './TurnoModal';
 // import Fab from './Fab';
 import HistorialActividad from './HistorialActividad';
 
@@ -60,12 +61,18 @@ const SistemaDashboard: React.FC = () => {
     setModalOpen(false);
   };
 
-  // Handlers para agregar paciente y turno (simulados)
-  const handleAddPaciente = () => {
-    alert('Funcionalidad de agregar paciente próximamente.');
-  };
-  const handleAddTurno = () => {
-    alert('Funcionalidad de agregar turno próximamente.');
+  // Estado para modales
+  const [turnoModalOpen, setTurnoModalOpen] = useState(false);
+  const [pacienteModalOpen, setPacienteModalOpen] = useState(false);
+
+  // Handlers para agregar paciente y turno
+  const handleAddPaciente = () => setPacienteModalOpen(true);
+  const handleAddTurno = () => setTurnoModalOpen(true);
+
+  // Simulación de alta de turno
+  const handleSubmitTurno = (data: any) => {
+    // Aquí podrías agregar lógica real de alta
+    alert('Turno solicitado para: ' + data.nombre);
   };
 
   return (
@@ -109,10 +116,10 @@ const SistemaDashboard: React.FC = () => {
               </button>
               {/* Card Turnos */}
               <button
-                className="bg-white rounded-2xl shadow-lg p-6 text-center flex flex-col items-center hover:shadow-xl hover:ring-2 hover:ring-brand-orange transition-all group focus:outline-none"
-                onClick={handleAddTurno}
-                title="Agregar Turno"
-              >
+                  className="bg-white rounded-2xl shadow-lg p-6 text-center flex flex-col items-center hover:shadow-xl hover:ring-2 hover:ring-brand-orange transition-all group focus:outline-none"
+                  onClick={handleAddTurno}
+                  title="Agregar Turno"
+                >
                 <CalendarCheck size={32} className="text-brand-orange mb-2 group-hover:scale-110 transition-transform" />
                 <div className="text-4xl font-extrabold text-brand-orange">{totalTurnos}</div>
                 <div className="text-gray-500 mt-2">Turnos</div>
@@ -411,7 +418,8 @@ const SistemaDashboard: React.FC = () => {
           </div>
         )}
       </main>
-      {/* Fab eliminado, ahora las acciones están en las cards */}
+      {/* Modal para agregar turno */}
+      <TurnoModal open={turnoModalOpen} onClose={() => setTurnoModalOpen(false)} onSubmit={handleSubmitTurno} />
     </div>
   );
 };
