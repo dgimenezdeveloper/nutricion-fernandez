@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import HistoriaClinicaModal from './HistoriaClinicaModal';
 import { Users, CalendarCheck, FileText, LayoutDashboard, UserCircle, PlusCircle, Activity, Edit, Trash2, Info, Download } from 'lucide-react';
-import Fab from './Fab';
+// import Fab from './Fab';
 import HistorialActividad from './HistorialActividad';
 
 const pacientesDemo = [
@@ -96,16 +96,28 @@ const SistemaDashboard: React.FC = () => {
           <div>
             <h2 className="text-3xl font-bold mb-8 flex items-center gap-2"><Activity className="text-brand-purple" /> Resumen General</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <div className="bg-white rounded-2xl shadow-lg p-6 text-center flex flex-col items-center">
-                <Users size={32} className="text-brand-purple mb-2" />
+              {/* Card Pacientes */}
+              <button
+                className="bg-white rounded-2xl shadow-lg p-6 text-center flex flex-col items-center hover:shadow-xl hover:ring-2 hover:ring-brand-purple transition-all group focus:outline-none"
+                onClick={handleAddPaciente}
+                title="Agregar Paciente"
+              >
+                <Users size={32} className="text-brand-purple mb-2 group-hover:scale-110 transition-transform" />
                 <div className="text-4xl font-extrabold text-brand-purple">{totalPacientes}</div>
                 <div className="text-gray-500 mt-2">Pacientes</div>
-              </div>
-              <div className="bg-white rounded-2xl shadow-lg p-6 text-center flex flex-col items-center">
-                <CalendarCheck size={32} className="text-brand-orange mb-2" />
+                <span className="mt-3 inline-flex items-center gap-1 text-xs text-brand-purple font-semibold bg-brand-light px-3 py-1 rounded-full group-hover:bg-brand-purple group-hover:text-white transition-colors"><PlusCircle size={16}/> Agregar</span>
+              </button>
+              {/* Card Turnos */}
+              <button
+                className="bg-white rounded-2xl shadow-lg p-6 text-center flex flex-col items-center hover:shadow-xl hover:ring-2 hover:ring-brand-orange transition-all group focus:outline-none"
+                onClick={handleAddTurno}
+                title="Agregar Turno"
+              >
+                <CalendarCheck size={32} className="text-brand-orange mb-2 group-hover:scale-110 transition-transform" />
                 <div className="text-4xl font-extrabold text-brand-orange">{totalTurnos}</div>
                 <div className="text-gray-500 mt-2">Turnos</div>
-              </div>
+                <span className="mt-3 inline-flex items-center gap-1 text-xs text-brand-orange font-semibold bg-orange-100 px-3 py-1 rounded-full group-hover:bg-brand-orange group-hover:text-white transition-colors"><PlusCircle size={16}/> Agregar</span>
+              </button>
             </div>
             <h3 className="font-bold text-lg mb-2">Próximos Turnos</h3>
             <ul className="bg-white rounded-xl shadow p-4">
@@ -399,7 +411,7 @@ const SistemaDashboard: React.FC = () => {
           </div>
         )}
       </main>
-      <Fab onAddPaciente={handleAddPaciente} onAddTurno={handleAddTurno} />
+      {/* Fab eliminado, ahora las acciones están en las cards */}
     </div>
   );
 };
