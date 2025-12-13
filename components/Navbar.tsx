@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, Instagram } from 'lucide-react';
+import { Menu, X, Send } from 'lucide-react';
 import { INSTAGRAM_URL } from '../constants';
 
 interface NavbarProps {
@@ -43,12 +43,13 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenBooking }) => {
 
         {/* Desktop Menu */}
         <div className="hidden md:flex items-center gap-8">
-          <a href="#inicio" onClick={(e) => scrollToSection(e, 'inicio')} className="text-brand-gray hover:text-brand-purple transition-colors font-medium">Inicio</a>
-          <a href="#servicios" onClick={(e) => scrollToSection(e, 'servicios')} className="text-brand-gray hover:text-brand-purple transition-colors font-medium">Especialidades</a>
-          <a href="#sobre-mi" onClick={(e) => scrollToSection(e, 'sobre-mi')} className="text-brand-gray hover:text-brand-purple transition-colors font-medium">Sobre Mí</a>
+          <a href="#inicio" onClick={(e: React.MouseEvent<HTMLAnchorElement>) => scrollToSection(e, 'inicio')} className="text-brand-gray hover:text-brand-purple transition-colors font-medium">Inicio</a>
+          <a href="#servicios" onClick={(e: React.MouseEvent<HTMLAnchorElement>) => scrollToSection(e, 'servicios')} className="text-brand-gray hover:text-brand-purple transition-colors font-medium">Especialidades</a>
+          <a href="#sobre-mi" onClick={(e: React.MouseEvent<HTMLAnchorElement>) => scrollToSection(e, 'sobre-mi')} className="text-brand-gray hover:text-brand-purple transition-colors font-medium">Sobre Mí</a>
           <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" className="text-brand-gray hover:text-brand-purple transition-colors">
-            <Instagram size={20} />
+            <Send size={20} />
           </a>
+          <a href="/sistema" className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-2 rounded-full font-semibold shadow-lg ml-2 transition-colors">Acceso Sistema</a>
           <button 
             onClick={onOpenBooking}
             className="bg-brand-purple text-white px-6 py-2 rounded-full font-semibold hover:bg-brand-darkPurple transition-colors shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
@@ -66,12 +67,13 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenBooking }) => {
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
         <div className="md:hidden absolute top-full left-0 w-full bg-white shadow-lg py-6 flex flex-col items-center gap-6 animate-fade-in">
-          <a href="#inicio" onClick={(e) => scrollToSection(e, 'inicio')} className="text-brand-gray font-medium text-lg">Inicio</a>
-          <a href="#servicios" onClick={(e) => scrollToSection(e, 'servicios')} className="text-brand-gray font-medium text-lg">Especialidades</a>
-          <a href="#sobre-mi" onClick={(e) => scrollToSection(e, 'sobre-mi')} className="text-brand-gray font-medium text-lg">Sobre Mí</a>
+          <a href="#inicio" onClick={(e: React.MouseEvent<HTMLAnchorElement>) => scrollToSection(e, 'inicio')} className="text-brand-gray font-medium text-lg">Inicio</a>
+          <a href="#servicios" onClick={(e: React.MouseEvent<HTMLAnchorElement>) => scrollToSection(e, 'servicios')} className="text-brand-gray font-medium text-lg">Especialidades</a>
+          <a href="#sobre-mi" onClick={(e: React.MouseEvent<HTMLAnchorElement>) => scrollToSection(e, 'sobre-mi')} className="text-brand-gray font-medium text-lg">Sobre Mí</a>
           <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-brand-purple font-medium">
-            <Instagram size={20} /> Instagram
+            <Send size={20} /> Instagram
           </a>
+          <a href="/sistema" className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 rounded-full font-bold shadow-md">Acceso Sistema</a>
           <button 
             onClick={() => {
               onOpenBooking();

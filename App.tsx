@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import Services from './components/Services';
@@ -8,16 +8,32 @@ import Footer from './components/Footer';
 import LocationBlock from './components/LocationBlock';
 import VideosSection from './components/VideosSection';
 import BookingModal from './components/BookingModal';
-// import AIChat from './components/AIChat';
 import WhatsAppButton from './components/WhatsAppButton';
+import Pacientes from './components/Pacientes';
+import SistemaDashboard from './components/SistemaDashboard';
 
 const App: React.FC = () => {
   const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [route, setRoute] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.location.pathname;
+    }
+    return '/';
+  });
+
+  useEffect(() => {
+    const onPopState = () => setRoute(window.location.pathname);
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  if (route === '/sistema') {
+    return <SistemaDashboard />;
+  }
 
   return (
     <div className="font-sans text-brand-gray bg-white selection:bg-brand-purple selection:text-white">
       <Navbar onOpenBooking={() => setIsBookingOpen(true)} />
-      
       <main>
         <Hero onOpenBooking={() => setIsBookingOpen(true)} />
         <FreeResources />
@@ -25,10 +41,9 @@ const App: React.FC = () => {
         <About />
         <LocationBlock />
         <VideosSection />
+        
       </main>
-
       <Footer />
-      
       {/* Floating Elements / Modals */}
       <WhatsAppButton />
       <BookingModal 
