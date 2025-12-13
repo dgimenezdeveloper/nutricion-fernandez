@@ -31,7 +31,7 @@ const About: React.FC = () => {
           </div>
           <div className="w-full md:w-1/2 grid grid-cols gap-4">
             
-            <img src="./public/images/sabrina-fernandez-01.avif" className="rounded-2xl shadow-lg mb-8" alt="Imagen de Sabrina Fernandez" />
+            <img src="/images/sabrina-fernandez-01.avif" className="rounded-2xl shadow-lg mb-8" alt="Imagen de Sabrina Fernandez" />
           </div>
         </div>
 
