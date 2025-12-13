@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, CheckCircle, AlertCircle } from 'lucide-react';
+import { User, Mail, Phone, ClipboardList } from 'lucide-react';
 import { BookingStatus } from '../types';
 
 interface BookingModalProps {
@@ -44,17 +45,15 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-brand-darkPurple/60 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-scale-up">
-        
-        <div className="bg-brand-purple p-6 flex justify-between items-center text-white">
-          <h2 className="text-xl font-bold font-serif">Solicitar Turno</h2>
-          <button onClick={onClose} className="hover:bg-white/20 p-1 rounded-full transition-colors">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-[#a98fdc]/70 backdrop-blur-[4px] animate-fade-in">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-scale-up relative">
+        <div className="flex justify-between items-center px-8 pt-7 pb-2">
+          <h2 className="text-2xl font-bold font-serif text-brand-purple">Solicitar Turno</h2>
+          <button onClick={onClose} className="text-brand-purple hover:bg-brand-light p-1 rounded-full transition-colors text-2xl">
             <X size={24} />
           </button>
         </div>
-
-        <div className="p-8">
+        <div className="p-8 pt-2">
           {status === BookingStatus.SUCCESS ? (
             <div className="text-center py-8">
               <div className="w-16 h-16 bg-green-100 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -69,25 +68,45 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre Completo</label>
-                <input required name="name" onChange={handleChange} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-brand-purple focus:border-transparent outline-none transition-all" />
+                <label className="block text-sm font-semibold mb-1 text-brand-gray">Nombre Completo</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                    <User size={18} />
+                  </span>
+                  <input required name="name" onChange={handleChange} className="w-full border border-gray-300 rounded-lg pl-10 pr-4 py-2 focus:ring-2 focus:ring-brand-purple focus:border-transparent outline-none transition-all bg-brand-light placeholder:text-gray-400" placeholder="Tu nombre" />
+                </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input required type="email" name="email" onChange={handleChange} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-brand-purple focus:border-transparent outline-none transition-all" />
+                <label className="block text-sm font-semibold mb-1 text-brand-gray">Email</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                    <Mail size={18} />
+                  </span>
+                  <input required type="email" name="email" onChange={handleChange} className="w-full border border-gray-300 rounded-lg pl-10 pr-4 py-2 focus:ring-2 focus:ring-brand-purple focus:border-transparent outline-none transition-all bg-brand-light placeholder:text-gray-400" placeholder="tu@email.com" />
+                </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono (WhatsApp)</label>
-                <input required type="tel" name="phone" onChange={handleChange} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-brand-purple focus:border-transparent outline-none transition-all" />
+                <label className="block text-sm font-semibold mb-1 text-brand-gray">Teléfono (WhatsApp)</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                    <Phone size={18} />
+                  </span>
+                  <input required type="tel" name="phone" onChange={handleChange} className="w-full border border-gray-300 rounded-lg pl-10 pr-4 py-2 focus:ring-2 focus:ring-brand-purple focus:border-transparent outline-none transition-all bg-brand-light placeholder:text-gray-400" placeholder="Tu número" />
+                </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Motivo de Consulta</label>
-                <select name="reason" onChange={handleChange} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-brand-purple focus:border-transparent outline-none transition-all">
-                  <option>Consulta General</option>
-                  <option>Tratamiento SIBO / IMO</option>
-                  <option>Dieta Low FODMAPs</option>
-                  <option>Otro</option>
-                </select>
+                <label className="block text-sm font-semibold mb-1 text-brand-gray">Motivo de consulta</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                    <ClipboardList size={18} />
+                  </span>
+                  <select name="reason" onChange={handleChange} className="w-full border border-gray-300 rounded-lg pl-10 pr-4 py-2 focus:ring-2 focus:ring-brand-purple focus:border-transparent outline-none bg-brand-light text-gray-700">
+                    <option>Consulta General</option>
+                    <option>Tratamiento SIBO / IMO</option>
+                    <option>Dieta Low FODMAPs</option>
+                    <option>Otro</option>
+                  </select>
+                </div>
               </div>
 
               {status === BookingStatus.ERROR && (
@@ -99,12 +118,14 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
               <button 
                 type="submit" 
                 disabled={status === BookingStatus.SUBMITTING}
-                className="w-full bg-brand-orange hover:bg-orange-500 text-white font-bold py-3 rounded-lg transition-all shadow-md hover:shadow-lg mt-4 flex justify-center items-center"
+                className="w-full bg-brand-orange hover:bg-orange-500 text-white font-bold py-3 rounded-lg transition-all shadow-md hover:shadow-lg mt-6 flex justify-center items-center text-lg gap-2"
               >
                 {status === BookingStatus.SUBMITTING ? (
                    <span className="animate-pulse">Enviando...</span>
                 ) : (
-                  <> <Calendar size={18} className="mr-2" /> Solicitar Turno </>
+                  <>
+                    <Calendar size={22} className="mr-2" /> Solicitar Turno
+                  </>
                 )}
               </button>
             </form>
