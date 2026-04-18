@@ -62,6 +62,7 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenBooking }) => {
           <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" className="text-brand-gray hover:text-brand-purple transition-colors">
             <Send size={20} />
           </a>
+          <a href="/mi-turno" className="border-2 border-brand-purple text-brand-purple hover:bg-brand-purple hover:text-white px-6 py-2 rounded-full font-semibold transition-colors ml-2">Gestionar mi turno</a>
           <a href="/sistema" className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-2 rounded-full font-semibold shadow-lg ml-2 transition-colors">Acceso Sistema</a>
           <button 
             onClick={onOpenBooking}

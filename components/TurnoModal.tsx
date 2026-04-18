@@ -62,14 +62,6 @@ const TurnoModal: React.FC<TurnoModalProps> = ({ open, onClose, onSubmit, pacien
   const [motivo, setMotivo] = useState('');
   const [usarExistente, setUsarExistente] = useState(true);
 
-  if (!open) return null;
-
-  const resetAndClose = () => {
-    setStep(1); setSelectedDate(null); setSelectedTime('');
-    setPacienteId(''); setNombreManual(''); setMotivo('');
-    onClose();
-  };
-
   // Build occupied slots from existing turnos
   const occupiedSlots: Record<string, string[]> = {};
   turnos.forEach((t: any) => {
@@ -88,6 +80,14 @@ const TurnoModal: React.FC<TurnoModalProps> = ({ open, onClose, onSubmit, pacien
     }
     return days;
   }, [weekStart]);
+
+  const resetAndClose = () => {
+    setStep(1); setSelectedDate(null); setSelectedTime('');
+    setPacienteId(''); setNombreManual(''); setMotivo('');
+    onClose();
+  };
+
+  if (!open) return null;
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
