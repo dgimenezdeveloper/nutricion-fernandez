@@ -176,7 +176,7 @@ const HistoriaClinicaModal: React.FC<HistoriaClinicaModalProps> = ({ paciente, t
           ))}
         </div>
 
-        <div className="p-4 sm:p-6 max-h-[55vh] overflow-y-auto">
+        <div className="p-4 sm:p-6 h-[55vh] overflow-y-auto">
           {activeTab === 'antropometria' && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
