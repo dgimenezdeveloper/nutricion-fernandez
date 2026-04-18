@@ -3,25 +3,30 @@ import HistoriaClinicaModal from './HistoriaClinicaModal';
 import { Users, CalendarCheck, FileText, LayoutDashboard, UserCircle, PlusCircle, Activity, Edit, Trash2, Info, Download, Menu, X } from 'lucide-react';
 import TurnoModal from './TurnoModal';
 import HistorialActividad from './HistorialActividad';
+import PacienteFormModal from './PacienteFormModal';
+import NotificationModal from './NotificationModal';
 
 const pacientesDemo = [
   {
-    id: '1',
-    nombre: 'María González',
-    fechaNacimiento: '1990-05-12',
-    historiaClinica: 'Paciente con antecedentes de SIBO. Tratamiento funcional iniciado en 2024. Mejoría notable en síntomas digestivos.'
+    id: '1', nombre: 'María González', fechaNacimiento: '1990-05-12', genero: 'Femenino',
+    telefono: '+54 11 4567-8901', email: 'maria.gonzalez@email.com', obraSocial: 'OSDE', numeroAfiliado: '12345678',
+    motivoConsulta: 'SIBO', antecedentesPatologicos: 'Gastritis crónica', medicacionActual: 'Omeprazol 20mg',
+    alergiasAlimentarias: 'Mariscos', intolerancias: 'Lactosa',
+    historiaClinica: JSON.stringify({ peso: '62', talla: '165', imc: '22.8', diagnosticoNutricional: 'Paciente con SIBO diagnosticado. Tratamiento funcional iniciado en 2024.', evolucionNotas: 'Mejoría notable en síntomas digestivos tras protocolo Low FODMAP.' })
   },
   {
-    id: '2',
-    nombre: 'Esteban Rodríguez',
-    fechaNacimiento: '1985-11-23',
-    historiaClinica: 'Consulta por disbiosis intestinal. Dieta personalizada y suplementación. Seguimiento mensual.'
+    id: '2', nombre: 'Esteban Rodríguez', fechaNacimiento: '1985-11-23', genero: 'Masculino',
+    telefono: '+54 11 5678-1234', email: 'esteban.r@email.com', obraSocial: 'Swiss Medical', numeroAfiliado: '87654321',
+    motivoConsulta: 'Disbiosis intestinal', antecedentesPatologicos: '', medicacionActual: '',
+    alergiasAlimentarias: '', intolerancias: 'Gluten',
+    historiaClinica: JSON.stringify({ peso: '78', talla: '175', imc: '25.5', diagnosticoNutricional: 'Disbiosis intestinal. Dieta personalizada y suplementación.', evolucionNotas: 'Seguimiento mensual. Mejora gradual en marcadores.' })
   },
   {
-    id: '3',
-    nombre: 'Lucía Martínez',
-    fechaNacimiento: '1997-03-08',
-    historiaClinica: 'Paciente con diagnóstico de IMO. Protocolo Low FODMAP y control de síntomas.'
+    id: '3', nombre: 'Lucía Martínez', fechaNacimiento: '1997-03-08', genero: 'Femenino',
+    telefono: '+54 11 3456-7890', email: 'lucia.m@email.com', obraSocial: 'Galeno', numeroAfiliado: '11223344',
+    motivoConsulta: 'IMO', antecedentesPatologicos: 'Hipotiroidismo', medicacionActual: 'Levotiroxina 50mcg',
+    alergiasAlimentarias: 'Frutos secos', intolerancias: 'Fructosa',
+    historiaClinica: JSON.stringify({ peso: '55', talla: '160', imc: '21.5', diagnosticoNutricional: 'IMO. Protocolo Low FODMAP y control de síntomas.', evolucionNotas: 'Buena adherencia al plan alimentario.' })
   }
 ];
 
@@ -30,6 +35,13 @@ const turnosDemo = [
   { id: 't2', pacienteId: '2', fecha: '2025-12-16', motivo: 'Seguimiento disbiosis' },
   { id: 't3', pacienteId: '3', fecha: '2025-12-17', motivo: 'Consulta IMO' }
 ];
+
+const STORAGE_KEYS = { pacientes: 'sistema_pacientes', turnos: 'sistema_turnos' };
+
+const loadFromStorage = <T,>(key: string, fallback: T): T => {
+  try { const d = localStorage.getItem(key); return d ? JSON.parse(d) : fallback; } catch { return fallback; }
+};
+const saveToStorage = (key: string, data: any) => { localStorage.setItem(key, JSON.stringify(data)); };
 
 const menuItems = [
   { key: 'resumen', label: 'Resumen', icon: LayoutDashboard },
@@ -40,32 +52,151 @@ const menuItems = [
 
 const SistemaDashboard: React.FC = () => {
   const [view, setView] = useState('resumen');
-  const [pacientes, setPacientes] = useState(pacientesDemo);
-  const [turnos, setTurnos] = useState(turnosDemo);
+  const [pacientes, setPacientes] = useState(() => loadFromStorage(STORAGE_KEYS.pacientes, pacientesDemo));
+  const [turnos, setTurnos] = useState(() => loadFromStorage(STORAGE_KEYS.turnos, turnosDemo));
   const [selectedPaciente, setSelectedPaciente] = useState<any>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [busqueda, setBusqueda] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const totalPacientes = pacientes.length;
-  const totalTurnos = turnos.length;
-  const pacientesFiltrados = pacientes.filter(p => p.nombre.toLowerCase().includes(busqueda.toLowerCase()));
+  // Modals
+  const [turnoModalOpen, setTurnoModalOpen] = useState(false);
+  const [pacienteFormOpen, setPacienteFormOpen] = useState(false);
+  const [pacienteFormMode, setPacienteFormMode] = useState<'crear' | 'editar'>('crear');
+  const [editingPaciente, setEditingPaciente] = useState<any>(null);
 
-  const guardarHistoria = (historia: string) => {
-    if (!selectedPaciente) return;
-    setPacientes(pacientes.map(p => p.id === selectedPaciente.id ? { ...selectedPaciente, historiaClinica: historia } : p));
-    setModalOpen(false);
+  // Notification modal state
+  const [notification, setNotification] = useState<{
+    open: boolean; title: string; message: string;
+    type: 'success' | 'warning' | 'info' | 'error';
+    onConfirm?: () => void; showCancel?: boolean;
+  }>({ open: false, title: '', message: '', type: 'info' });
+
+  const showNotification = (title: string, message: string, type: 'success' | 'warning' | 'info' | 'error' = 'info', onConfirm?: () => void, showCancel = false) => {
+    setNotification({ open: true, title, message, type, onConfirm, showCancel });
   };
 
-  const [turnoModalOpen, setTurnoModalOpen] = useState(false);
-  const [pacienteModalOpen, setPacienteModalOpen] = useState(false);
+  // Persist to localStorage
+  useEffect(() => { saveToStorage(STORAGE_KEYS.pacientes, pacientes); }, [pacientes]);
+  useEffect(() => { saveToStorage(STORAGE_KEYS.turnos, turnos); }, [turnos]);
 
-  const handleAddPaciente = () => setPacienteModalOpen(true);
+  const totalPacientes = pacientes.length;
+  const totalTurnos = turnos.length;
+  const pacientesFiltrados = pacientes.filter((p: any) => p.nombre.toLowerCase().includes(busqueda.toLowerCase()));
+
+  // === PACIENTE CRUD ===
+  const handleAddPaciente = () => {
+    setEditingPaciente(null);
+    setPacienteFormMode('crear');
+    setPacienteFormOpen(true);
+  };
+
+  const handleEditPaciente = (p: any) => {
+    setEditingPaciente(p);
+    setPacienteFormMode('editar');
+    setPacienteFormOpen(true);
+  };
+
+  const handleSavePaciente = (data: any) => {
+    if (pacienteFormMode === 'editar') {
+      setPacientes((prev: any[]) => prev.map(p => p.id === data.id ? { ...p, ...data } : p));
+      showNotification('Paciente actualizado', `Los datos de ${data.nombre} se guardaron correctamente.`, 'success');
+    } else {
+      const newPaciente = { ...data, id: Date.now().toString(), historiaClinica: '' };
+      setPacientes((prev: any[]) => [...prev, newPaciente]);
+      showNotification('Paciente registrado', `${data.nombre} fue agregado/a exitosamente al sistema.`, 'success');
+    }
+  };
+
+  const handleDeletePaciente = (p: any) => {
+    showNotification(
+      'Eliminar paciente',
+      `¿Está segura que desea eliminar a ${p.nombre}? Se eliminarán también sus turnos asociados. Esta acción no se puede deshacer.`,
+      'error',
+      () => {
+        setPacientes((prev: any[]) => prev.filter(pac => pac.id !== p.id));
+        setTurnos((prev: any[]) => prev.filter(t => t.pacienteId !== p.id));
+        showNotification('Paciente eliminado', `${p.nombre} fue eliminado/a del sistema.`, 'success');
+      },
+      true
+    );
+  };
+
+  // === HISTORIA CLINICA ===
+  const guardarHistoria = (historia: string) => {
+    if (!selectedPaciente) return;
+    setPacientes((prev: any[]) => prev.map(p => p.id === selectedPaciente.id ? { ...p, historiaClinica: historia } : p));
+    setModalOpen(false);
+    showNotification('Historia clínica guardada', `La historia clínica de ${selectedPaciente.nombre} se actualizó correctamente.`, 'success');
+  };
+
+  // === TURNOS ===
   const handleAddTurno = () => setTurnoModalOpen(true);
-  const handleSubmitTurno = (data: any) => { alert('Turno solicitado para: ' + data.nombre); };
+
+  const handleSubmitTurno = (data: any) => {
+    const matchingPaciente = pacientes.find((p: any) => p.nombre.toLowerCase() === data.nombre.toLowerCase());
+    const newTurno = {
+      id: 't' + Date.now(),
+      pacienteId: matchingPaciente?.id || '',
+      fecha: data.fecha,
+      motivo: data.motivo
+    };
+    setTurnos((prev: any[]) => [...prev, newTurno]);
+    showNotification('Turno agendado', `Turno para ${data.nombre} el ${data.fecha} fue registrado exitosamente.`, 'success');
+  };
+
+  const handleDeleteTurno = (t: any) => {
+    const paciente = pacientes.find((p: any) => p.id === t.pacienteId);
+    showNotification(
+      'Eliminar turno',
+      `¿Desea eliminar el turno de ${paciente?.nombre || 'paciente'} del ${t.fecha}?`,
+      'warning',
+      () => {
+        setTurnos((prev: any[]) => prev.filter(turno => turno.id !== t.id));
+        showNotification('Turno eliminado', 'El turno fue eliminado correctamente.', 'success');
+      },
+      true
+    );
+  };
+
+  // === EXPORT HC ===
+  const handleExportHC = (p: any) => {
+    try {
+      let hcText = `HISTORIA CLÍNICA NUTRICIONAL\n${'='.repeat(40)}\nPaciente: ${p.nombre}\nFecha de nacimiento: ${p.fechaNacimiento}\n`;
+      if (p.genero) hcText += `Género: ${p.genero}\n`;
+      if (p.obraSocial) hcText += `Obra Social: ${p.obraSocial}\n`;
+      if (p.motivoConsulta) hcText += `Motivo de consulta: ${p.motivoConsulta}\n`;
+      if (p.antecedentesPatologicos) hcText += `Antecedentes: ${p.antecedentesPatologicos}\n`;
+      if (p.medicacionActual) hcText += `Medicación: ${p.medicacionActual}\n`;
+      if (p.alergiasAlimentarias) hcText += `Alergias: ${p.alergiasAlimentarias}\n`;
+      if (p.intolerancias) hcText += `Intolerancias: ${p.intolerancias}\n`;
+      hcText += `\n${'='.repeat(40)}\n`;
+      if (p.historiaClinica) {
+        try {
+          const hcData = JSON.parse(p.historiaClinica);
+          Object.entries(hcData).forEach(([key, value]) => {
+            if (value) hcText += `${key}: ${value}\n`;
+          });
+        } catch {
+          hcText += p.historiaClinica;
+        }
+      }
+      const blob = new Blob([hcText], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `HC_${p.nombre.replace(/\s+/g, '_')}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showNotification('Exportación exitosa', `La historia clínica de ${p.nombre} fue descargada.`, 'success');
+    } catch {
+      showNotification('Error', 'No se pudo exportar la historia clínica.', 'error');
+    }
+  };
 
   const navigateTo = (key: string) => {
     setView(key);
+    setBusqueda('');
     setSidebarOpen(false);
   };
 
@@ -89,12 +220,10 @@ const SistemaDashboard: React.FC = () => {
         <div className="w-10" />
       </div>
 
-      {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div className="lg:hidden fixed inset-0 bg-black/40 z-50 transition-opacity" onClick={() => setSidebarOpen(false)} />
       )}
 
-      {/* Sidebar */}
       <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-72 lg:w-64 bg-white shadow-xl flex flex-col p-6 gap-4 border-r border-gray-100 transform transition-transform duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
         <button onClick={() => setSidebarOpen(false)} className="lg:hidden absolute top-4 right-4 p-2 rounded-lg hover:bg-brand-light text-brand-gray" aria-label="Cerrar menú">
           <X size={20} />
@@ -114,8 +243,8 @@ const SistemaDashboard: React.FC = () => {
         <a href="/" className="mt-auto text-sm text-brand-orange hover:underline py-2">Volver al sitio</a>
       </aside>
 
-      {/* Main content */}
       <main className="flex-1 p-4 sm:p-6 lg:p-10 pt-20 lg:pt-10 min-w-0">
+        {/* ========== RESUMEN ========== */}
         {view === 'resumen' && (
           <div>
             <h2 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8 flex items-center gap-2"><Activity className="text-brand-purple" /> Resumen General</h2>
@@ -135,63 +264,73 @@ const SistemaDashboard: React.FC = () => {
             </div>
             <h3 className="font-bold text-lg mb-2">Próximos Turnos</h3>
             <ul className="bg-white rounded-xl shadow p-3 sm:p-4">
-              {turnos.map(t => {
-                const paciente = pacientes.find(p => p.id === t.pacienteId);
+              {turnos.map((t: any) => {
+                const paciente = pacientes.find((p: any) => p.id === t.pacienteId);
                 return (
                   <li key={t.id} className="py-3 border-b last:border-b-0 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
                     <span className="flex items-center gap-2 flex-wrap">
                       <UserCircle size={18} className="text-brand-purple flex-shrink-0" />
-                      <span className="font-semibold text-sm sm:text-base">{paciente?.nombre}</span>
+                      <span className="font-semibold text-sm sm:text-base">{paciente?.nombre || 'Paciente externo'}</span>
                       <span className="text-xs bg-brand-light text-brand-purple px-2 py-0.5 rounded">{t.fecha}</span>
                     </span>
                     <span className="text-gray-500 text-sm font-medium pl-7 sm:pl-0">{t.motivo}</span>
                   </li>
                 );
               })}
+              {turnos.length === 0 && <li className="py-4 text-center text-gray-400">No hay turnos registrados.</li>}
             </ul>
             <HistorialActividad />
           </div>
         )}
 
+        {/* ========== PACIENTES ========== */}
         {view === 'pacientes' && (
           <div>
-            <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 flex items-center gap-2"><Users className="text-brand-purple" /> Pacientes</h2>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 sm:mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2"><Users className="text-brand-purple" /> Pacientes</h2>
+              <button onClick={handleAddPaciente} className="bg-brand-purple hover:bg-brand-darkPurple text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition-colors shadow-md text-sm">
+                <PlusCircle size={18} /> Nuevo Paciente
+              </button>
+            </div>
             <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2 mb-4">
-              <input type="text" placeholder="Buscar paciente..." className="px-4 py-2 border rounded focus:ring-2 focus:ring-brand-purple w-full sm:max-w-[300px]" value={busqueda} onChange={e => setBusqueda(e.target.value)} />
+              <input type="text" placeholder="Buscar paciente..." className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-brand-purple w-full sm:max-w-[300px]" value={busqueda} onChange={e => setBusqueda(e.target.value)} />
               <span className="text-gray-400 text-sm">{pacientesFiltrados.length} resultados</span>
             </div>
+            {/* Desktop table */}
             <div className="hidden md:block overflow-x-auto">
               <table className="min-w-full bg-white rounded-xl shadow">
-                <thead><tr><th className="py-2 px-4 text-left">Paciente</th><th className="py-2 px-4 text-left">Edad</th><th className="py-2 px-4 text-left">Turnos</th><th className="py-2 px-4 text-left">Acciones</th></tr></thead>
+                <thead><tr><th className="py-2 px-4 text-left">Paciente</th><th className="py-2 px-4 text-left">Edad</th><th className="py-2 px-4 text-left">Motivo</th><th className="py-2 px-4 text-left">Turnos</th><th className="py-2 px-4 text-left">Acciones</th></tr></thead>
                 <tbody>
-                  {pacientesFiltrados.map(p => {
+                  {pacientesFiltrados.map((p: any) => {
                     const color = ['bg-brand-purple','bg-brand-orange','bg-emerald-500','bg-blue-400','bg-pink-400'][parseInt(p.id)%5];
-                    const iniciales = p.nombre.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
+                    const iniciales = p.nombre.split(' ').map((n: string)=>n[0]).join('').toUpperCase().slice(0,2);
                     const edad = Math.floor((new Date().getTime() - new Date(p.fechaNacimiento).getTime()) / (1000*60*60*24*365.25));
-                    const turnosPaciente = turnos.filter(t => t.pacienteId === p.id);
+                    const turnosPaciente = turnos.filter((t: any) => t.pacienteId === p.id);
                     return (
                       <tr key={p.id} className="border-t hover:bg-brand-light/50 transition-colors">
                         <td className="py-2 px-4 flex items-center gap-3"><span className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg shadow ${color}`}>{iniciales}</span><span className="font-semibold">{p.nombre}</span></td>
                         <td className="py-2 px-4"><span className="inline-block bg-brand-light text-brand-purple px-2 py-0.5 rounded text-xs font-semibold">{edad} años</span></td>
+                        <td className="py-2 px-4"><span className="text-gray-500 text-sm">{p.motivoConsulta || '-'}</span></td>
                         <td className="py-2 px-4"><span className="inline-block bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-xs font-semibold">{turnosPaciente.length} turno{turnosPaciente.length!==1?'s':''}</span></td>
                         <td className="py-2 px-4 flex gap-2">
-                          <button onClick={() => { setSelectedPaciente(p); setModalOpen(true); }} className="p-2 rounded-full bg-brand-light hover:bg-brand-purple/20 text-brand-purple" title="Ver/Editar historia clínica"><Info size={18} /></button>
-                          <button onClick={() => alert('Funcionalidad de editar próximamente.')} className="p-2 rounded-full bg-brand-light hover:bg-brand-orange/20 text-brand-orange" title="Editar paciente"><Edit size={18} /></button>
-                          <button onClick={() => alert('Funcionalidad de eliminar próximamente.')} className="p-2 rounded-full bg-brand-light hover:bg-red-100 text-red-500" title="Eliminar paciente"><Trash2 size={18} /></button>
+                          <button onClick={() => { setSelectedPaciente(p); setModalOpen(true); }} className="p-2 rounded-full bg-brand-light hover:bg-brand-purple/20 text-brand-purple" title="Ver/Editar HC"><Info size={18} /></button>
+                          <button onClick={() => handleEditPaciente(p)} className="p-2 rounded-full bg-brand-light hover:bg-brand-orange/20 text-brand-orange" title="Editar paciente"><Edit size={18} /></button>
+                          <button onClick={() => handleDeletePaciente(p)} className="p-2 rounded-full bg-brand-light hover:bg-red-100 text-red-500" title="Eliminar paciente"><Trash2 size={18} /></button>
                         </td>
                       </tr>
                     );
                   })}
-                  {pacientesFiltrados.length === 0 && (<tr><td colSpan={4} className="text-center py-4 text-gray-400">No se encontraron pacientes.</td></tr>)}
+                  {pacientesFiltrados.length === 0 && (<tr><td colSpan={5} className="text-center py-4 text-gray-400">No se encontraron pacientes.</td></tr>)}
                 </tbody>
               </table>
             </div>
+            {/* Mobile cards */}
             <div className="md:hidden space-y-3">
-              {pacientesFiltrados.map(p => {
+              {pacientesFiltrados.map((p: any) => {
                 const color = ['bg-brand-purple','bg-brand-orange','bg-emerald-500','bg-blue-400','bg-pink-400'][parseInt(p.id)%5];
-                const iniciales = p.nombre.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
+                const iniciales = p.nombre.split(' ').map((n: string)=>n[0]).join('').toUpperCase().slice(0,2);
                 const edad = Math.floor((new Date().getTime() - new Date(p.fechaNacimiento).getTime()) / (1000*60*60*24*365.25));
-                const turnosPaciente = turnos.filter(t => t.pacienteId === p.id);
+                const turnosPaciente = turnos.filter((t: any) => t.pacienteId === p.id);
                 return (
                   <div key={p.id} className="bg-white rounded-xl shadow p-4 flex flex-col gap-3">
                     <div className="flex items-center gap-3">
@@ -201,66 +340,71 @@ const SistemaDashboard: React.FC = () => {
                         <div className="flex gap-2 mt-1 flex-wrap">
                           <span className="inline-block bg-brand-light text-brand-purple px-2 py-0.5 rounded text-xs font-semibold">{edad} años</span>
                           <span className="inline-block bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-xs font-semibold">{turnosPaciente.length} turno{turnosPaciente.length!==1?'s':''}</span>
+                          {p.motivoConsulta && <span className="inline-block bg-orange-100 text-brand-orange px-2 py-0.5 rounded text-xs font-semibold">{p.motivoConsulta}</span>}
                         </div>
                       </div>
                     </div>
                     <div className="flex gap-2 justify-end">
                       <button onClick={() => { setSelectedPaciente(p); setModalOpen(true); }} className="p-2.5 rounded-full bg-brand-light hover:bg-brand-purple/20 text-brand-purple" title="Ver/Editar HC"><Info size={18} /></button>
-                      <button onClick={() => alert('Funcionalidad de editar próximamente.')} className="p-2.5 rounded-full bg-brand-light hover:bg-brand-orange/20 text-brand-orange" title="Editar"><Edit size={18} /></button>
-                      <button onClick={() => alert('Funcionalidad de eliminar próximamente.')} className="p-2.5 rounded-full bg-brand-light hover:bg-red-100 text-red-500" title="Eliminar"><Trash2 size={18} /></button>
+                      <button onClick={() => handleEditPaciente(p)} className="p-2.5 rounded-full bg-brand-light hover:bg-brand-orange/20 text-brand-orange" title="Editar"><Edit size={18} /></button>
+                      <button onClick={() => handleDeletePaciente(p)} className="p-2.5 rounded-full bg-brand-light hover:bg-red-100 text-red-500" title="Eliminar"><Trash2 size={18} /></button>
                     </div>
                   </div>
                 );
               })}
               {pacientesFiltrados.length === 0 && (<div className="text-center py-4 text-gray-400 bg-white rounded-xl shadow p-4">No se encontraron pacientes.</div>)}
             </div>
-            <HistoriaClinicaModal paciente={selectedPaciente || {}} turnos={selectedPaciente ? turnos.filter(t => t.pacienteId === selectedPaciente.id) : []} open={modalOpen} onClose={() => setModalOpen(false)} onSave={guardarHistoria} />
+            <HistoriaClinicaModal paciente={selectedPaciente || {}} turnos={selectedPaciente ? turnos.filter((t: any) => t.pacienteId === selectedPaciente.id) : []} open={modalOpen} onClose={() => setModalOpen(false)} onSave={guardarHistoria} />
           </div>
         )}
 
+        {/* ========== TURNOS ========== */}
         {view === 'turnos' && (
           <div>
-            <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 flex items-center gap-2"><CalendarCheck className="text-brand-orange" /> Turnos</h2>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 sm:mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2"><CalendarCheck className="text-brand-orange" /> Turnos</h2>
+              <button onClick={handleAddTurno} className="bg-brand-orange hover:bg-orange-500 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 transition-colors shadow-md text-sm">
+                <PlusCircle size={18} /> Nuevo Turno
+              </button>
+            </div>
             <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2 mb-4">
-              <input type="text" placeholder="Buscar por paciente, fecha o motivo..." className="px-4 py-2 border rounded focus:ring-2 focus:ring-brand-purple w-full sm:max-w-[300px]" value={busqueda} onChange={e => setBusqueda(e.target.value)} />
-              <span className="text-gray-400 text-sm">{turnos.filter(t => { const p = pacientes.find(pp => pp.id === t.pacienteId); return p?.nombre.toLowerCase().includes(busqueda.toLowerCase()) || t.fecha.includes(busqueda) || t.motivo.toLowerCase().includes(busqueda.toLowerCase()); }).length} resultados</span>
+              <input type="text" placeholder="Buscar por paciente, fecha o motivo..." className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-brand-purple w-full sm:max-w-[300px]" value={busqueda} onChange={e => setBusqueda(e.target.value)} />
+              <span className="text-gray-400 text-sm">{turnos.filter((t: any) => { const p = pacientes.find((pp: any) => pp.id === t.pacienteId); return (p?.nombre?.toLowerCase().includes(busqueda.toLowerCase()) || t.fecha.includes(busqueda) || t.motivo.toLowerCase().includes(busqueda.toLowerCase())); }).length} resultados</span>
             </div>
             <div className="hidden md:block overflow-x-auto">
               <table className="min-w-full bg-white rounded-xl shadow">
                 <thead><tr><th className="py-2 px-4 text-left">Paciente</th><th className="py-2 px-4 text-left">Fecha</th><th className="py-2 px-4 text-left">Motivo</th><th className="py-2 px-4 text-left">Acciones</th></tr></thead>
                 <tbody>
-                  {turnos.filter(t => { const p = pacientes.find(pp => pp.id === t.pacienteId); return p?.nombre.toLowerCase().includes(busqueda.toLowerCase()) || t.fecha.includes(busqueda) || t.motivo.toLowerCase().includes(busqueda.toLowerCase()); }).map(t => {
-                    const paciente = pacientes.find(p => p.id === t.pacienteId);
+                  {turnos.filter((t: any) => { const p = pacientes.find((pp: any) => pp.id === t.pacienteId); return (p?.nombre?.toLowerCase().includes(busqueda.toLowerCase()) || t.fecha.includes(busqueda) || t.motivo.toLowerCase().includes(busqueda.toLowerCase())); }).map((t: any) => {
+                    const paciente = pacientes.find((p: any) => p.id === t.pacienteId);
                     const color = ['bg-brand-purple','bg-brand-orange','bg-emerald-500','bg-blue-400','bg-pink-400'][parseInt(paciente?.id||'0')%5];
-                    const iniciales = paciente?.nombre.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
+                    const iniciales = paciente?.nombre?.split(' ').map((n: string)=>n[0]).join('').toUpperCase().slice(0,2) || '??';
                     return (
                       <tr key={t.id} className="border-t hover:bg-brand-light/50 transition-colors">
-                        <td className="py-2 px-4 flex items-center gap-3"><span className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-base shadow ${color}`}>{iniciales}</span><span className="font-semibold">{paciente?.nombre}</span></td>
+                        <td className="py-2 px-4 flex items-center gap-3"><span className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-base shadow ${color}`}>{iniciales}</span><span className="font-semibold">{paciente?.nombre || 'Paciente externo'}</span></td>
                         <td className="py-2 px-4"><span className="inline-block bg-brand-light text-brand-purple px-2 py-0.5 rounded text-xs font-semibold">{t.fecha}</span></td>
                         <td className="py-2 px-4"><span className="inline-block bg-orange-100 text-brand-orange px-2 py-0.5 rounded text-xs font-semibold">{t.motivo}</span></td>
                         <td className="py-2 px-4 flex gap-2">
-                          <button onClick={() => alert('Ver detalles próximamente.')} className="p-2 rounded-full bg-brand-light hover:bg-brand-purple/20 text-brand-purple" title="Ver detalles"><Info size={18} /></button>
-                          <button onClick={() => alert('Editar turno próximamente.')} className="p-2 rounded-full bg-brand-light hover:bg-brand-orange/20 text-brand-orange" title="Editar turno"><Edit size={18} /></button>
-                          <button onClick={() => alert('Eliminar turno próximamente.')} className="p-2 rounded-full bg-brand-light hover:bg-red-100 text-red-500" title="Eliminar turno"><Trash2 size={18} /></button>
+                          <button onClick={() => handleDeleteTurno(t)} className="p-2 rounded-full bg-brand-light hover:bg-red-100 text-red-500" title="Eliminar turno"><Trash2 size={18} /></button>
                         </td>
                       </tr>
                     );
                   })}
-                  {turnos.filter(t => { const p = pacientes.find(pp => pp.id === t.pacienteId); return p?.nombre.toLowerCase().includes(busqueda.toLowerCase()) || t.fecha.includes(busqueda) || t.motivo.toLowerCase().includes(busqueda.toLowerCase()); }).length === 0 && (<tr><td colSpan={4} className="text-center py-4 text-gray-400">No se encontraron turnos.</td></tr>)}
+                  {turnos.filter((t: any) => { const p = pacientes.find((pp: any) => pp.id === t.pacienteId); return (p?.nombre?.toLowerCase().includes(busqueda.toLowerCase()) || t.fecha.includes(busqueda) || t.motivo.toLowerCase().includes(busqueda.toLowerCase())); }).length === 0 && (<tr><td colSpan={4} className="text-center py-4 text-gray-400">No se encontraron turnos.</td></tr>)}
                 </tbody>
               </table>
             </div>
             <div className="md:hidden space-y-3">
-              {turnos.filter(t => { const p = pacientes.find(pp => pp.id === t.pacienteId); return p?.nombre.toLowerCase().includes(busqueda.toLowerCase()) || t.fecha.includes(busqueda) || t.motivo.toLowerCase().includes(busqueda.toLowerCase()); }).map(t => {
-                const paciente = pacientes.find(p => p.id === t.pacienteId);
+              {turnos.filter((t: any) => { const p = pacientes.find((pp: any) => pp.id === t.pacienteId); return (p?.nombre?.toLowerCase().includes(busqueda.toLowerCase()) || t.fecha.includes(busqueda) || t.motivo.toLowerCase().includes(busqueda.toLowerCase())); }).map((t: any) => {
+                const paciente = pacientes.find((p: any) => p.id === t.pacienteId);
                 const color = ['bg-brand-purple','bg-brand-orange','bg-emerald-500','bg-blue-400','bg-pink-400'][parseInt(paciente?.id||'0')%5];
-                const iniciales = paciente?.nombre.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
+                const iniciales = paciente?.nombre?.split(' ').map((n: string)=>n[0]).join('').toUpperCase().slice(0,2) || '??';
                 return (
                   <div key={t.id} className="bg-white rounded-xl shadow p-4 flex flex-col gap-3">
                     <div className="flex items-center gap-3">
                       <span className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-base shadow flex-shrink-0 ${color}`}>{iniciales}</span>
                       <div className="min-w-0">
-                        <div className="font-semibold truncate">{paciente?.nombre}</div>
+                        <div className="font-semibold truncate">{paciente?.nombre || 'Paciente externo'}</div>
                         <div className="flex gap-2 mt-1 flex-wrap">
                           <span className="inline-block bg-brand-light text-brand-purple px-2 py-0.5 rounded text-xs font-semibold">{t.fecha}</span>
                           <span className="inline-block bg-orange-100 text-brand-orange px-2 py-0.5 rounded text-xs font-semibold">{t.motivo}</span>
@@ -268,35 +412,34 @@ const SistemaDashboard: React.FC = () => {
                       </div>
                     </div>
                     <div className="flex gap-2 justify-end">
-                      <button onClick={() => alert('Ver detalles próximamente.')} className="p-2.5 rounded-full bg-brand-light hover:bg-brand-purple/20 text-brand-purple" title="Ver detalles"><Info size={18} /></button>
-                      <button onClick={() => alert('Editar turno próximamente.')} className="p-2.5 rounded-full bg-brand-light hover:bg-brand-orange/20 text-brand-orange" title="Editar"><Edit size={18} /></button>
-                      <button onClick={() => alert('Eliminar turno próximamente.')} className="p-2.5 rounded-full bg-brand-light hover:bg-red-100 text-red-500" title="Eliminar"><Trash2 size={18} /></button>
+                      <button onClick={() => handleDeleteTurno(t)} className="p-2.5 rounded-full bg-brand-light hover:bg-red-100 text-red-500" title="Eliminar"><Trash2 size={18} /></button>
                     </div>
                   </div>
                 );
               })}
-              {turnos.filter(t => { const p = pacientes.find(pp => pp.id === t.pacienteId); return p?.nombre.toLowerCase().includes(busqueda.toLowerCase()) || t.fecha.includes(busqueda) || t.motivo.toLowerCase().includes(busqueda.toLowerCase()); }).length === 0 && (<div className="text-center py-4 text-gray-400 bg-white rounded-xl shadow p-4">No se encontraron turnos.</div>)}
+              {turnos.filter((t: any) => { const p = pacientes.find((pp: any) => pp.id === t.pacienteId); return (p?.nombre?.toLowerCase().includes(busqueda.toLowerCase()) || t.fecha.includes(busqueda) || t.motivo.toLowerCase().includes(busqueda.toLowerCase())); }).length === 0 && (<div className="text-center py-4 text-gray-400 bg-white rounded-xl shadow p-4">No se encontraron turnos.</div>)}
             </div>
           </div>
         )}
 
+        {/* ========== HISTORIAS CLÍNICAS ========== */}
         {view === 'historias' && (
           <div>
             <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 flex items-center gap-2"><FileText className="text-brand-purple" /> Historias Clínicas</h2>
             <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2 mb-4">
-              <input type="text" placeholder="Buscar por nombre o diagnóstico..." className="px-4 py-2 border rounded focus:ring-2 focus:ring-brand-purple w-full sm:max-w-[300px]" value={busqueda} onChange={e => setBusqueda(e.target.value)} />
-              <span className="text-gray-400 text-sm">{pacientes.filter(p => p.nombre.toLowerCase().includes(busqueda.toLowerCase()) || (p.historiaClinica && p.historiaClinica.toLowerCase().includes(busqueda.toLowerCase()))).length} resultados</span>
+              <input type="text" placeholder="Buscar por nombre o diagnóstico..." className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-brand-purple w-full sm:max-w-[300px]" value={busqueda} onChange={e => setBusqueda(e.target.value)} />
+              <span className="text-gray-400 text-sm">{pacientes.filter((p: any) => p.nombre.toLowerCase().includes(busqueda.toLowerCase()) || (p.historiaClinica && p.historiaClinica.toLowerCase().includes(busqueda.toLowerCase()))).length} resultados</span>
             </div>
             <div className="hidden md:block overflow-x-auto">
               <table className="min-w-full bg-white rounded-xl shadow">
                 <thead><tr><th className="py-2 px-4 text-left">Paciente</th><th className="py-2 px-4 text-left">Edad</th><th className="py-2 px-4 text-left">Estado HC</th><th className="py-2 px-4 text-left">Última act.</th><th className="py-2 px-4 text-left">Acciones</th></tr></thead>
                 <tbody>
-                  {pacientes.filter(p => p.nombre.toLowerCase().includes(busqueda.toLowerCase()) || (p.historiaClinica && p.historiaClinica.toLowerCase().includes(busqueda.toLowerCase()))).map(p => {
+                  {pacientes.filter((p: any) => p.nombre.toLowerCase().includes(busqueda.toLowerCase()) || (p.historiaClinica && p.historiaClinica.toLowerCase().includes(busqueda.toLowerCase()))).map((p: any) => {
                     const color = ['bg-brand-purple','bg-brand-orange','bg-emerald-500','bg-blue-400','bg-pink-400'][parseInt(p.id)%5];
-                    const iniciales = p.nombre.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
+                    const iniciales = p.nombre.split(' ').map((n: string)=>n[0]).join('').toUpperCase().slice(0,2);
                     const edad = new Date().getFullYear() - new Date(p.fechaNacimiento).getFullYear();
                     const tieneHC = p.historiaClinica && p.historiaClinica.trim().length > 0;
-                    const turnosCount = turnos.filter(t => t.pacienteId === p.id).length;
+                    const turnosCount = turnos.filter((t: any) => t.pacienteId === p.id).length;
                     return (
                       <tr key={p.id} className="border-t hover:bg-brand-light/50 transition-colors">
                         <td className="py-2 px-4 flex items-center gap-3"><span className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-base shadow ${color}`}>{iniciales}</span><span className="font-semibold">{p.nombre}</span></td>
@@ -305,22 +448,22 @@ const SistemaDashboard: React.FC = () => {
                         <td className="py-2 px-4"><span className="inline-block bg-brand-light text-brand-purple px-2 py-0.5 rounded text-xs font-semibold">{turnosCount} turnos</span></td>
                         <td className="py-2 px-4 flex gap-2">
                           <button onClick={() => { setSelectedPaciente(p); setModalOpen(true); }} className="p-2 rounded-full bg-brand-light hover:bg-brand-purple/20 text-brand-purple" title="Ver/Editar HC"><FileText size={18} /></button>
-                          <button onClick={() => alert('Exportar HC próximamente.')} className="p-2 rounded-full bg-brand-light hover:bg-brand-orange/20 text-brand-orange" title="Exportar HC"><Download size={18} /></button>
+                          <button onClick={() => handleExportHC(p)} className="p-2 rounded-full bg-brand-light hover:bg-brand-orange/20 text-brand-orange" title="Exportar HC"><Download size={18} /></button>
                         </td>
                       </tr>
                     );
                   })}
-                  {pacientes.filter(p => p.nombre.toLowerCase().includes(busqueda.toLowerCase()) || (p.historiaClinica && p.historiaClinica.toLowerCase().includes(busqueda.toLowerCase()))).length === 0 && (<tr><td colSpan={5} className="text-center py-4 text-gray-400">No se encontraron historias clínicas.</td></tr>)}
+                  {pacientes.filter((p: any) => p.nombre.toLowerCase().includes(busqueda.toLowerCase()) || (p.historiaClinica && p.historiaClinica.toLowerCase().includes(busqueda.toLowerCase()))).length === 0 && (<tr><td colSpan={5} className="text-center py-4 text-gray-400">No se encontraron historias clínicas.</td></tr>)}
                 </tbody>
               </table>
             </div>
             <div className="md:hidden space-y-3">
-              {pacientes.filter(p => p.nombre.toLowerCase().includes(busqueda.toLowerCase()) || (p.historiaClinica && p.historiaClinica.toLowerCase().includes(busqueda.toLowerCase()))).map(p => {
+              {pacientes.filter((p: any) => p.nombre.toLowerCase().includes(busqueda.toLowerCase()) || (p.historiaClinica && p.historiaClinica.toLowerCase().includes(busqueda.toLowerCase()))).map((p: any) => {
                 const color = ['bg-brand-purple','bg-brand-orange','bg-emerald-500','bg-blue-400','bg-pink-400'][parseInt(p.id)%5];
-                const iniciales = p.nombre.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
+                const iniciales = p.nombre.split(' ').map((n: string)=>n[0]).join('').toUpperCase().slice(0,2);
                 const edad = new Date().getFullYear() - new Date(p.fechaNacimiento).getFullYear();
                 const tieneHC = p.historiaClinica && p.historiaClinica.trim().length > 0;
-                const turnosCount = turnos.filter(t => t.pacienteId === p.id).length;
+                const turnosCount = turnos.filter((t: any) => t.pacienteId === p.id).length;
                 return (
                   <div key={p.id} className="bg-white rounded-xl shadow p-4 flex flex-col gap-3">
                     <div className="flex items-center gap-3">
@@ -336,17 +479,30 @@ const SistemaDashboard: React.FC = () => {
                     </div>
                     <div className="flex gap-2 justify-end">
                       <button onClick={() => { setSelectedPaciente(p); setModalOpen(true); }} className="p-2.5 rounded-full bg-brand-light hover:bg-brand-purple/20 text-brand-purple" title="Ver/Editar HC"><FileText size={18} /></button>
-                      <button onClick={() => alert('Exportar HC próximamente.')} className="p-2.5 rounded-full bg-brand-light hover:bg-brand-orange/20 text-brand-orange" title="Exportar HC"><Download size={18} /></button>
+                      <button onClick={() => handleExportHC(p)} className="p-2.5 rounded-full bg-brand-light hover:bg-brand-orange/20 text-brand-orange" title="Exportar HC"><Download size={18} /></button>
                     </div>
                   </div>
                 );
               })}
-              {pacientes.filter(p => p.nombre.toLowerCase().includes(busqueda.toLowerCase()) || (p.historiaClinica && p.historiaClinica.toLowerCase().includes(busqueda.toLowerCase()))).length === 0 && (<div className="text-center py-4 text-gray-400 bg-white rounded-xl shadow p-4">No se encontraron historias clínicas.</div>)}
+              {pacientes.filter((p: any) => p.nombre.toLowerCase().includes(busqueda.toLowerCase()) || (p.historiaClinica && p.historiaClinica.toLowerCase().includes(busqueda.toLowerCase()))).length === 0 && (<div className="text-center py-4 text-gray-400 bg-white rounded-xl shadow p-4">No se encontraron historias clínicas.</div>)}
             </div>
+            <HistoriaClinicaModal paciente={selectedPaciente || {}} turnos={selectedPaciente ? turnos.filter((t: any) => t.pacienteId === selectedPaciente.id) : []} open={modalOpen} onClose={() => setModalOpen(false)} onSave={guardarHistoria} />
           </div>
         )}
       </main>
+
+      {/* Modals */}
       <TurnoModal open={turnoModalOpen} onClose={() => setTurnoModalOpen(false)} onSubmit={handleSubmitTurno} />
+      <PacienteFormModal open={pacienteFormOpen} onClose={() => setPacienteFormOpen(false)} onSave={handleSavePaciente} paciente={editingPaciente} mode={pacienteFormMode} />
+      <NotificationModal
+        open={notification.open}
+        onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+        title={notification.title}
+        message={notification.message}
+        type={notification.type}
+        onConfirm={notification.onConfirm}
+        showCancel={notification.showCancel}
+      />
     </div>
   );
 };
