@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import HistoriaClinicaModal from './HistoriaClinicaModal';
-import { Users, CalendarCheck, FileText, LayoutDashboard, UserCircle, PlusCircle, Activity, Edit, Trash2, Info, Download, Menu, X } from 'lucide-react';
+import { Users, CalendarCheck, FileText, LayoutDashboard, UserCircle, PlusCircle, Activity, Edit, Trash2, Info, Download, Menu, X, ChevronLeft, ChevronRight, Clock, Mail, Phone, Calendar, XCircle, RotateCcw, Send } from 'lucide-react';
+import { FaWhatsapp } from 'react-icons/fa';
 import TurnoModal from './TurnoModal';
 import HistorialActividad from './HistorialActividad';
 import PacienteFormModal from './PacienteFormModal';
@@ -30,18 +31,52 @@ const pacientesDemo = [
   }
 ];
 
-const turnosDemo = [
-  { id: 't1', pacienteId: '1', fecha: '2025-12-15', motivo: 'Control SIBO' },
-  { id: 't2', pacienteId: '2', fecha: '2025-12-16', motivo: 'Seguimiento disbiosis' },
-  { id: 't3', pacienteId: '3', fecha: '2025-12-17', motivo: 'Consulta IMO' }
+const turnosDemo: { id: string; pacienteId: string; fecha: string; hora: string; motivo: string; estado: string; nombreExterno?: string }[] = [
+  { id: 't1', pacienteId: '1', fecha: '2025-12-15', hora: '08:30', motivo: 'Control SIBO', estado: 'confirmado' },
+  { id: 't2', pacienteId: '2', fecha: '2025-12-16', hora: '09:00', motivo: 'Seguimiento disbiosis', estado: 'confirmado' },
+  { id: 't3', pacienteId: '3', fecha: '2025-12-17', hora: '14:00', motivo: 'Consulta IMO', estado: 'confirmado' }
 ];
 
-const STORAGE_KEYS = { pacientes: 'sistema_pacientes', turnos: 'sistema_turnos' };
+const STORAGE_KEYS = { pacientes: 'sistema_pacientes', turnos: 'sistema_turnos', cancelaciones: 'sistema_cancelaciones' };
 
 const loadFromStorage = <T,>(key: string, fallback: T): T => {
   try { const d = localStorage.getItem(key); return d ? JSON.parse(d) : fallback; } catch { return fallback; }
 };
 const saveToStorage = (key: string, data: any) => { localStorage.setItem(key, JSON.stringify(data)); };
+
+// Calendar helpers
+const SCHEDULE: Record<number, { desde: string; hasta: string } | null> = {
+  0: null, 1: null,
+  2: { desde: '08:00', hasta: '12:00' },
+  3: null,
+  4: { desde: '08:00', hasta: '12:00' },
+  5: { desde: '14:00', hasta: '18:00' },
+  6: null,
+};
+const SLOT_DURATION_MIN = 30;
+const DAY_NAMES_S = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+const MONTH_NAMES_S = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+function getMondayS(d: Date): Date {
+  const date = new Date(d);
+  const day = date.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  date.setDate(date.getDate() + diff);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+function formatDateKeyS(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function generateSlotsS(desde: string, hasta: string): string[] {
+  const slots: string[] = [];
+  const [hS, mS] = desde.split(':').map(Number);
+  const [hE, mE] = hasta.split(':').map(Number);
+  let t = hS * 60 + mS;
+  const end = hE * 60 + mE;
+  while (t < end) { slots.push(`${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`); t += SLOT_DURATION_MIN; }
+  return slots;
+}
 
 const menuItems = [
   { key: 'resumen', label: 'Resumen', icon: LayoutDashboard },
@@ -54,10 +89,13 @@ const SistemaDashboard: React.FC = () => {
   const [view, setView] = useState('resumen');
   const [pacientes, setPacientes] = useState(() => loadFromStorage(STORAGE_KEYS.pacientes, pacientesDemo));
   const [turnos, setTurnos] = useState(() => loadFromStorage(STORAGE_KEYS.turnos, turnosDemo));
+  const [cancelaciones, setCancelaciones] = useState<any[]>(() => loadFromStorage(STORAGE_KEYS.cancelaciones, []));
   const [selectedPaciente, setSelectedPaciente] = useState<any>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [busqueda, setBusqueda] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [turnoTab, setTurnoTab] = useState<'hoy' | 'semana' | 'cancelaciones'>('hoy');
+  const [turnoWeekStart, setTurnoWeekStart] = useState<Date>(() => getMondayS(new Date()));
 
   // Modals
   const [turnoModalOpen, setTurnoModalOpen] = useState(false);
@@ -79,9 +117,10 @@ const SistemaDashboard: React.FC = () => {
   // Persist to localStorage
   useEffect(() => { saveToStorage(STORAGE_KEYS.pacientes, pacientes); }, [pacientes]);
   useEffect(() => { saveToStorage(STORAGE_KEYS.turnos, turnos); }, [turnos]);
+  useEffect(() => { saveToStorage(STORAGE_KEYS.cancelaciones, cancelaciones); }, [cancelaciones]);
 
   const totalPacientes = pacientes.length;
-  const totalTurnos = turnos.length;
+  const totalTurnos = turnos.filter((t: any) => t.estado !== 'cancelado').length;
   const pacientesFiltrados = pacientes.filter((p: any) => p.nombre.toLowerCase().includes(busqueda.toLowerCase()));
 
   // === PACIENTE CRUD ===
@@ -134,26 +173,45 @@ const SistemaDashboard: React.FC = () => {
   const handleAddTurno = () => setTurnoModalOpen(true);
 
   const handleSubmitTurno = (data: any) => {
-    const matchingPaciente = pacientes.find((p: any) => p.nombre.toLowerCase() === data.nombre.toLowerCase());
+    const matchingPaciente = data.pacienteId
+      ? pacientes.find((p: any) => p.id === data.pacienteId)
+      : pacientes.find((p: any) => p.nombre.toLowerCase() === data.nombre.toLowerCase());
     const newTurno = {
       id: 't' + Date.now(),
       pacienteId: matchingPaciente?.id || '',
       fecha: data.fecha,
-      motivo: data.motivo
+      hora: data.hora || '',
+      motivo: data.motivo,
+      estado: data.estado || 'confirmado',
+      nombreExterno: matchingPaciente ? undefined : data.nombre,
     };
     setTurnos((prev: any[]) => [...prev, newTurno]);
-    showNotification('Turno agendado', `Turno para ${data.nombre} el ${data.fecha} fue registrado exitosamente.`, 'success');
+    showNotification('Turno agendado', `Turno para ${matchingPaciente?.nombre || data.nombre} el ${data.fecha} a las ${data.hora || '-'} fue registrado exitosamente.`, 'success');
   };
 
   const handleDeleteTurno = (t: any) => {
     const paciente = pacientes.find((p: any) => p.id === t.pacienteId);
     showNotification(
-      'Eliminar turno',
-      `¿Desea eliminar el turno de ${paciente?.nombre || 'paciente'} del ${t.fecha}?`,
+      'Cancelar turno',
+      `¿Desea cancelar el turno de ${paciente?.nombre || t.nombreExterno || 'paciente'} del ${t.fecha}${t.hora ? ' a las ' + t.hora : ''}?`,
       'warning',
       () => {
-        setTurnos((prev: any[]) => prev.filter(turno => turno.id !== t.id));
-        showNotification('Turno eliminado', 'El turno fue eliminado correctamente.', 'success');
+        setTurnos((prev: any[]) => prev.map(turno => turno.id === t.id ? { ...turno, estado: 'cancelado' } : turno));
+        setCancelaciones((prev: any[]) => [...prev, {
+          id: 'c' + Date.now(),
+          turnoId: t.id,
+          pacienteId: t.pacienteId,
+          nombrePaciente: paciente?.nombre || t.nombreExterno || 'Paciente externo',
+          email: paciente?.email || '',
+          telefono: paciente?.telefono || '',
+          fecha: t.fecha,
+          hora: t.hora || '',
+          motivo: t.motivo,
+          fechaCancelacion: new Date().toISOString().split('T')[0],
+          origen: 'admin',
+          reprogramado: false,
+        }]);
+        showNotification('Turno cancelado', 'El turno fue cancelado y movido a la pestaña de cancelaciones.', 'success');
       },
       true
     );
@@ -264,20 +322,20 @@ const SistemaDashboard: React.FC = () => {
             </div>
             <h3 className="font-bold text-lg mb-2">Próximos Turnos</h3>
             <ul className="bg-white rounded-xl shadow p-3 sm:p-4">
-              {turnos.map((t: any) => {
+              {turnos.filter((t: any) => t.estado !== 'cancelado').map((t: any) => {
                 const paciente = pacientes.find((p: any) => p.id === t.pacienteId);
                 return (
                   <li key={t.id} className="py-3 border-b last:border-b-0 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
                     <span className="flex items-center gap-2 flex-wrap">
                       <UserCircle size={18} className="text-brand-purple flex-shrink-0" />
-                      <span className="font-semibold text-sm sm:text-base">{paciente?.nombre || 'Paciente externo'}</span>
-                      <span className="text-xs bg-brand-light text-brand-purple px-2 py-0.5 rounded">{t.fecha}</span>
+                      <span className="font-semibold text-sm sm:text-base">{paciente?.nombre || t.nombreExterno || 'Paciente externo'}</span>
+                      <span className="text-xs bg-brand-light text-brand-purple px-2 py-0.5 rounded">{t.fecha}{t.hora ? ` ${t.hora}` : ''}</span>
                     </span>
                     <span className="text-gray-500 text-sm font-medium pl-7 sm:pl-0">{t.motivo}</span>
                   </li>
                 );
               })}
-              {turnos.length === 0 && <li className="py-4 text-center text-gray-400">No hay turnos registrados.</li>}
+              {turnos.filter((t: any) => t.estado !== 'cancelado').length === 0 && <li className="py-4 text-center text-gray-400">No hay turnos registrados.</li>}
             </ul>
             <HistorialActividad />
           </div>
@@ -359,7 +417,44 @@ const SistemaDashboard: React.FC = () => {
         )}
 
         {/* ========== TURNOS ========== */}
-        {view === 'turnos' && (
+        {view === 'turnos' && (() => {
+          const todayKey = formatDateKeyS(new Date());
+          const turnosActivos = turnos.filter((t: any) => t.estado !== 'cancelado');
+          const turnosHoy = turnosActivos.filter((t: any) => t.fecha === todayKey).sort((a: any, b: any) => (a.hora || '').localeCompare(b.hora || ''));
+
+          // Week calendar data
+          const twDays: Date[] = [];
+          for (let i = 0; i < 7; i++) { const d = new Date(turnoWeekStart); d.setDate(turnoWeekStart.getDate() + i); twDays.push(d); }
+          const twEnd = twDays[6];
+          const twLabel = `${twDays[0].getDate()} ${MONTH_NAMES_S[twDays[0].getMonth()].substring(0, 3)} - ${twEnd.getDate()} ${MONTH_NAMES_S[twEnd.getMonth()].substring(0, 3)}`;
+
+          const handleReprogramar = (c: any) => {
+            // Remove from cancelaciones and create new turno flow
+            setCancelaciones((prev: any[]) => prev.map(canc => canc.id === c.id ? { ...canc, reprogramado: true } : canc));
+            setTurnoModalOpen(true);
+          };
+
+          const handleContactWhatsApp = (c: any) => {
+            const tel = (c.telefono || '').replace(/\D/g, '');
+            const msg = encodeURIComponent(`Hola ${c.nombrePaciente}, te escribimos del consultorio de la Lic. Sabrina Fernandez. Tu turno del ${c.fecha}${c.hora ? ' a las ' + c.hora : ''} fue cancelado. ¿Podemos reprogramarlo?`);
+            window.open(`https://wa.me/${tel}?text=${msg}`, '_blank');
+          };
+
+          const handleContactEmail = (c: any) => {
+            const subject = encodeURIComponent('Reprogramación de turno - Lic. Sabrina Fernandez');
+            const body = encodeURIComponent(`Estimado/a ${c.nombrePaciente},\n\nLe informamos que su turno del ${c.fecha}${c.hora ? ' a las ' + c.hora : ''} ha sido cancelado.\n\n¿Le gustaría reprogramar su cita?\n\nSaludos cordiales,\nLic. Sabrina B. Fernandez\nNutrición Funcional`);
+            window.open(`mailto:${c.email}?subject=${subject}&body=${body}`, '_blank');
+          };
+
+          const handleDeleteCancelacion = (c: any) => {
+            showNotification('Eliminar registro', `¿Eliminar el registro de cancelación de ${c.nombrePaciente}?`, 'warning',
+              () => {
+                setCancelaciones((prev: any[]) => prev.filter(canc => canc.id !== c.id));
+                showNotification('Registro eliminado', 'El registro de cancelación fue eliminado.', 'success');
+              }, true);
+          };
+
+          return (
           <div>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 sm:mb-6">
               <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2"><CalendarCheck className="text-brand-orange" /> Turnos</h2>
@@ -367,60 +462,198 @@ const SistemaDashboard: React.FC = () => {
                 <PlusCircle size={18} /> Nuevo Turno
               </button>
             </div>
-            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2 mb-4">
-              <input type="text" placeholder="Buscar por paciente, fecha o motivo..." className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-brand-purple w-full sm:max-w-[300px]" value={busqueda} onChange={e => setBusqueda(e.target.value)} />
-              <span className="text-gray-400 text-sm">{turnos.filter((t: any) => { const p = pacientes.find((pp: any) => pp.id === t.pacienteId); return (p?.nombre?.toLowerCase().includes(busqueda.toLowerCase()) || t.fecha.includes(busqueda) || t.motivo.toLowerCase().includes(busqueda.toLowerCase())); }).length} resultados</span>
+
+            {/* Tabs */}
+            <div className="flex border-b border-gray-200 mb-4 overflow-x-auto">
+              <button onClick={() => setTurnoTab('hoy')} className={`px-4 py-2.5 text-sm font-semibold whitespace-nowrap border-b-2 transition-colors flex items-center gap-2 ${turnoTab === 'hoy' ? 'border-brand-orange text-brand-orange' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
+                <Clock size={16} /> Turnos del Día
+                {turnosHoy.length > 0 && <span className="bg-brand-orange text-white text-xs px-2 py-0.5 rounded-full">{turnosHoy.length}</span>}
+              </button>
+              <button onClick={() => setTurnoTab('semana')} className={`px-4 py-2.5 text-sm font-semibold whitespace-nowrap border-b-2 transition-colors flex items-center gap-2 ${turnoTab === 'semana' ? 'border-brand-purple text-brand-purple' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
+                <Calendar size={16} /> Calendario Semanal
+              </button>
+              <button onClick={() => setTurnoTab('cancelaciones')} className={`px-4 py-2.5 text-sm font-semibold whitespace-nowrap border-b-2 transition-colors flex items-center gap-2 ${turnoTab === 'cancelaciones' ? 'border-red-500 text-red-500' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
+                <XCircle size={16} /> Cancelaciones
+                {cancelaciones.filter((c: any) => !c.reprogramado).length > 0 && <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{cancelaciones.filter((c: any) => !c.reprogramado).length}</span>}
+              </button>
             </div>
-            <div className="hidden md:block overflow-x-auto">
-              <table className="min-w-full bg-white rounded-xl shadow">
-                <thead><tr><th className="py-2 px-4 text-left">Paciente</th><th className="py-2 px-4 text-left">Fecha</th><th className="py-2 px-4 text-left">Motivo</th><th className="py-2 px-4 text-left">Acciones</th></tr></thead>
-                <tbody>
-                  {turnos.filter((t: any) => { const p = pacientes.find((pp: any) => pp.id === t.pacienteId); return (p?.nombre?.toLowerCase().includes(busqueda.toLowerCase()) || t.fecha.includes(busqueda) || t.motivo.toLowerCase().includes(busqueda.toLowerCase())); }).map((t: any) => {
-                    const paciente = pacientes.find((p: any) => p.id === t.pacienteId);
-                    const color = ['bg-brand-purple','bg-brand-orange','bg-emerald-500','bg-blue-400','bg-pink-400'][parseInt(paciente?.id||'0')%5];
-                    const iniciales = paciente?.nombre?.split(' ').map((n: string)=>n[0]).join('').toUpperCase().slice(0,2) || '??';
-                    return (
-                      <tr key={t.id} className="border-t hover:bg-brand-light/50 transition-colors">
-                        <td className="py-2 px-4 flex items-center gap-3"><span className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-base shadow ${color}`}>{iniciales}</span><span className="font-semibold">{paciente?.nombre || 'Paciente externo'}</span></td>
-                        <td className="py-2 px-4"><span className="inline-block bg-brand-light text-brand-purple px-2 py-0.5 rounded text-xs font-semibold">{t.fecha}</span></td>
-                        <td className="py-2 px-4"><span className="inline-block bg-orange-100 text-brand-orange px-2 py-0.5 rounded text-xs font-semibold">{t.motivo}</span></td>
-                        <td className="py-2 px-4 flex gap-2">
-                          <button onClick={() => handleDeleteTurno(t)} className="p-2 rounded-full bg-brand-light hover:bg-red-100 text-red-500" title="Eliminar turno"><Trash2 size={18} /></button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {turnos.filter((t: any) => { const p = pacientes.find((pp: any) => pp.id === t.pacienteId); return (p?.nombre?.toLowerCase().includes(busqueda.toLowerCase()) || t.fecha.includes(busqueda) || t.motivo.toLowerCase().includes(busqueda.toLowerCase())); }).length === 0 && (<tr><td colSpan={4} className="text-center py-4 text-gray-400">No se encontraron turnos.</td></tr>)}
-                </tbody>
-              </table>
-            </div>
-            <div className="md:hidden space-y-3">
-              {turnos.filter((t: any) => { const p = pacientes.find((pp: any) => pp.id === t.pacienteId); return (p?.nombre?.toLowerCase().includes(busqueda.toLowerCase()) || t.fecha.includes(busqueda) || t.motivo.toLowerCase().includes(busqueda.toLowerCase())); }).map((t: any) => {
-                const paciente = pacientes.find((p: any) => p.id === t.pacienteId);
-                const color = ['bg-brand-purple','bg-brand-orange','bg-emerald-500','bg-blue-400','bg-pink-400'][parseInt(paciente?.id||'0')%5];
-                const iniciales = paciente?.nombre?.split(' ').map((n: string)=>n[0]).join('').toUpperCase().slice(0,2) || '??';
-                return (
-                  <div key={t.id} className="bg-white rounded-xl shadow p-4 flex flex-col gap-3">
-                    <div className="flex items-center gap-3">
-                      <span className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-base shadow flex-shrink-0 ${color}`}>{iniciales}</span>
-                      <div className="min-w-0">
-                        <div className="font-semibold truncate">{paciente?.nombre || 'Paciente externo'}</div>
-                        <div className="flex gap-2 mt-1 flex-wrap">
-                          <span className="inline-block bg-brand-light text-brand-purple px-2 py-0.5 rounded text-xs font-semibold">{t.fecha}</span>
-                          <span className="inline-block bg-orange-100 text-brand-orange px-2 py-0.5 rounded text-xs font-semibold">{t.motivo}</span>
+
+            {/* TAB: Turnos del día */}
+            {turnoTab === 'hoy' && (
+              <div>
+                <div className="bg-brand-purple/5 rounded-xl p-4 mb-4 flex items-center gap-3">
+                  <Calendar size={20} className="text-brand-purple" />
+                  <span className="font-semibold text-brand-gray">
+                    Hoy, {new Date().getDate()} de {MONTH_NAMES_S[new Date().getMonth()]} de {new Date().getFullYear()}
+                  </span>
+                  <span className="text-sm text-gray-500 ml-auto">{turnosHoy.length} turno{turnosHoy.length !== 1 ? 's' : ''}</span>
+                </div>
+                {turnosHoy.length > 0 ? (
+                  <div className="space-y-3">
+                    {turnosHoy.map((t: any) => {
+                      const paciente = pacientes.find((p: any) => p.id === t.pacienteId);
+                      const color = ['bg-brand-purple','bg-brand-orange','bg-emerald-500','bg-blue-400','bg-pink-400'][parseInt(paciente?.id||'0')%5];
+                      const iniciales = paciente?.nombre?.split(' ').map((n: string)=>n[0]).join('').toUpperCase().slice(0,2) || '??';
+                      return (
+                        <div key={t.id} className="bg-white rounded-xl shadow p-4 flex items-center gap-4 hover:shadow-md transition-shadow">
+                          <div className="text-center bg-brand-purple text-white rounded-xl px-3 py-2 min-w-[60px]">
+                            <div className="text-lg font-black">{t.hora || '--:--'}</div>
+                            <div className="text-[10px] opacity-80">hs</div>
+                          </div>
+                          <span className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-base shadow flex-shrink-0 ${color}`}>{iniciales}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold truncate">{paciente?.nombre || t.nombreExterno || 'Paciente externo'}</div>
+                            <div className="flex gap-2 mt-1 flex-wrap">
+                              <span className="inline-block bg-orange-100 text-brand-orange px-2 py-0.5 rounded text-xs font-semibold">{t.motivo}</span>
+                              {paciente?.telefono && <span className="text-xs text-gray-400 flex items-center gap-1"><Phone size={12} />{paciente.telefono}</span>}
+                            </div>
+                          </div>
+                          <button onClick={() => handleDeleteTurno(t)} className="p-2 rounded-full bg-brand-light hover:bg-red-100 text-red-500 flex-shrink-0" title="Cancelar turno"><XCircle size={18} /></button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-xl shadow p-8 text-center text-gray-400">
+                    <Calendar size={40} className="mx-auto mb-3 opacity-30" />
+                    <p className="font-semibold">No hay turnos para hoy</p>
+                    <p className="text-sm mt-1">Los turnos agendados para hoy aparecerán aquí</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB: Calendario semanal */}
+            {turnoTab === 'semana' && (
+              <div>
+                <div className="flex items-center justify-center gap-3 mb-4">
+                  <button onClick={() => { const p = new Date(turnoWeekStart); p.setDate(p.getDate() - 7); setTurnoWeekStart(p); }}
+                    className="p-2 rounded-lg border border-gray-200 hover:bg-brand-light transition-colors"><ChevronLeft size={18} /></button>
+                  <div className="bg-brand-purple text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2">
+                    <Calendar size={16} /> {twLabel}
+                  </div>
+                  <button onClick={() => { const n = new Date(turnoWeekStart); n.setDate(n.getDate() + 7); setTurnoWeekStart(n); }}
+                    className="p-2 rounded-lg border border-gray-200 hover:bg-brand-light transition-colors"><ChevronRight size={18} /></button>
+                </div>
+
+                <div className="overflow-x-auto -mx-4 sm:mx-0">
+                  <div className="grid grid-cols-7 min-w-[700px] border border-gray-200 rounded-xl overflow-hidden">
+                    {twDays.map((day, i) => {
+                      const isToday = formatDateKeyS(day) === todayKey;
+                      return (
+                        <div key={i} className={`text-center py-2.5 border-b border-r last:border-r-0 font-bold text-sm ${isToday ? 'bg-brand-purple text-white' : 'bg-gray-50 text-brand-gray'}`}>
+                          <div>{DAY_NAMES_S[day.getDay()]}</div>
+                          <div className="text-xs font-normal mt-0.5 opacity-80">{day.getDate()} {MONTH_NAMES_S[day.getMonth()].substring(0, 3)}</div>
+                        </div>
+                      );
+                    })}
+                    {twDays.map((day, i) => {
+                      const schedule = SCHEDULE[day.getDay()];
+                      const dateKey = formatDateKeyS(day);
+                      const dayTurnos = turnosActivos.filter((t: any) => t.fecha === dateKey);
+
+                      if (!schedule) {
+                        return (
+                          <div key={`s-${i}`} className="border-r last:border-r-0 bg-gray-50/50 flex items-start justify-center pt-4 min-h-[180px]">
+                            <span className="text-xs text-gray-300 font-medium bg-gray-100 px-3 py-1 rounded-full">No atiende</span>
+                          </div>
+                        );
+                      }
+
+                      const slots = generateSlotsS(schedule.desde, schedule.hasta);
+                      return (
+                        <div key={`s-${i}`} className="border-r last:border-r-0 flex flex-col">
+                          {slots.map(time => {
+                            const turnoEnSlot = dayTurnos.find((t: any) => t.hora === time);
+                            const pacienteSlot = turnoEnSlot ? pacientes.find((p: any) => p.id === turnoEnSlot.pacienteId) : null;
+                            return (
+                              <div key={time} className={`py-2 px-1 text-xs border-b last:border-b-0 text-center ${
+                                turnoEnSlot ? 'bg-brand-purple/10 text-brand-purple font-semibold' : 'text-gray-400'
+                              }`}>
+                                <div>{time}</div>
+                                {turnoEnSlot && (
+                                  <div className="text-[10px] truncate max-w-full mt-0.5" title={pacienteSlot?.nombre || turnoEnSlot.nombreExterno}>
+                                    {pacienteSlot?.nombre?.split(' ')[0] || turnoEnSlot.nombreExterno?.split(' ')[0] || 'Ocupado'}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB: Cancelaciones */}
+            {turnoTab === 'cancelaciones' && (
+              <div>
+                {cancelaciones.length > 0 ? (
+                  <div className="space-y-3">
+                    {cancelaciones.sort((a: any, b: any) => b.fechaCancelacion?.localeCompare(a.fechaCancelacion || '')).map((c: any) => (
+                      <div key={c.id} className={`bg-white rounded-xl shadow p-4 border-l-4 ${c.reprogramado ? 'border-emerald-400' : 'border-red-400'}`}>
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-semibold">{c.nombrePaciente}</span>
+                              {c.reprogramado
+                                ? <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-semibold">Reprogramado</span>
+                                : <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-semibold">Cancelado</span>
+                              }
+                              <span className="text-xs text-gray-400">{c.origen === 'paciente' ? '(por paciente)' : '(por admin)'}</span>
+                            </div>
+                            <div className="flex gap-3 mt-1 text-sm text-gray-500 flex-wrap">
+                              <span className="flex items-center gap-1"><Calendar size={12} /> {c.fecha}{c.hora ? ` ${c.hora}` : ''}</span>
+                              <span>{c.motivo}</span>
+                              {c.motivoCancelacion && <span className="italic text-gray-400">"{c.motivoCancelacion}"</span>}
+                            </div>
+                            {(c.email || c.telefono) && (
+                              <div className="flex gap-3 mt-1 text-xs text-gray-400 flex-wrap">
+                                {c.email && <span className="flex items-center gap-1"><Mail size={11} /> {c.email}</span>}
+                                {c.telefono && <span className="flex items-center gap-1"><Phone size={11} /> {c.telefono}</span>}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex gap-2 flex-shrink-0">
+                            {!c.reprogramado && (
+                              <>
+                                {c.telefono && (
+                                  <button onClick={() => handleContactWhatsApp(c)} className="p-2.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-600" title="Contactar por WhatsApp">
+                                    <FaWhatsapp size={18} />
+                                  </button>
+                                )}
+                                {c.email && (
+                                  <button onClick={() => handleContactEmail(c)} className="p-2.5 rounded-full bg-blue-50 hover:bg-blue-100 text-blue-600" title="Contactar por Email">
+                                    <Mail size={18} />
+                                  </button>
+                                )}
+                                <button onClick={() => handleReprogramar(c)} className="p-2.5 rounded-full bg-brand-light hover:bg-brand-purple/20 text-brand-purple" title="Reprogramar turno">
+                                  <RotateCcw size={18} />
+                                </button>
+                              </>
+                            )}
+                            <button onClick={() => handleDeleteCancelacion(c)} className="p-2.5 rounded-full bg-brand-light hover:bg-red-100 text-red-500" title="Eliminar registro">
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex gap-2 justify-end">
-                      <button onClick={() => handleDeleteTurno(t)} className="p-2.5 rounded-full bg-brand-light hover:bg-red-100 text-red-500" title="Eliminar"><Trash2 size={18} /></button>
-                    </div>
+                    ))}
                   </div>
-                );
-              })}
-              {turnos.filter((t: any) => { const p = pacientes.find((pp: any) => pp.id === t.pacienteId); return (p?.nombre?.toLowerCase().includes(busqueda.toLowerCase()) || t.fecha.includes(busqueda) || t.motivo.toLowerCase().includes(busqueda.toLowerCase())); }).length === 0 && (<div className="text-center py-4 text-gray-400 bg-white rounded-xl shadow p-4">No se encontraron turnos.</div>)}
-            </div>
+                ) : (
+                  <div className="bg-white rounded-xl shadow p-8 text-center text-gray-400">
+                    <XCircle size={40} className="mx-auto mb-3 opacity-30" />
+                    <p className="font-semibold">No hay cancelaciones</p>
+                    <p className="text-sm mt-1">Los turnos cancelados aparecerán aquí</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-        )}
+          );
+        })()}
 
         {/* ========== HISTORIAS CLÍNICAS ========== */}
         {view === 'historias' && (
@@ -492,7 +725,7 @@ const SistemaDashboard: React.FC = () => {
       </main>
 
       {/* Modals */}
-      <TurnoModal open={turnoModalOpen} onClose={() => setTurnoModalOpen(false)} onSubmit={handleSubmitTurno} />
+      <TurnoModal open={turnoModalOpen} onClose={() => setTurnoModalOpen(false)} onSubmit={handleSubmitTurno} pacientes={pacientes} turnos={turnos} />
       <PacienteFormModal open={pacienteFormOpen} onClose={() => setPacienteFormOpen(false)} onSave={handleSavePaciente} paciente={editingPaciente} mode={pacienteFormMode} />
       <NotificationModal
         open={notification.open}

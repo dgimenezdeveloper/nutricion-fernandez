@@ -11,6 +11,7 @@ import BookingModal from './components/BookingModal';
 import WhatsAppButton from './components/WhatsAppButton';
 import Pacientes from './components/Pacientes';
 import SistemaDashboard from './components/SistemaDashboard';
+import MiTurno from './components/MiTurno';
 
 const App: React.FC = () => {
   const [isBookingOpen, setIsBookingOpen] = useState(false);
@@ -29,6 +30,10 @@ const App: React.FC = () => {
 
   if (route === '/sistema') {
     return <SistemaDashboard />;
+  }
+
+  if (route === '/mi-turno') {
+    return <MiTurno />;
   }
 
   return (
