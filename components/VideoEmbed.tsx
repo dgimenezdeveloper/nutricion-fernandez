@@ -17,9 +17,9 @@ function getYouTubeEmbedUrl(url: string) {
   // Convierte la URL de YouTube a formato embed
   // Ejemplo: https://youtu.be/WxX15UPwEgA => https://www.youtube.com/embed/WxX15UPwEgA
   const ytMatch = url.match(/youtu(?:\.be\/|be\.com\/(?:watch\?v=|embed\/))([\w-]+)/);
-  if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`;
+  if (ytMatch) return `https://www.youtube-nocookie.com/embed/${ytMatch[1]}`;
   const short = url.match(/youtu\.be\/([\w-]+)/);
-  if (short) return `https://www.youtube.com/embed/${short[1]}`;
+  if (short) return `https://www.youtube-nocookie.com/embed/${short[1]}`;
   return null;
 }
 
