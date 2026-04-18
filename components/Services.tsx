@@ -15,16 +15,16 @@ const Services: React.FC = () => {
       {/* Background decoration */}
       <div className="absolute top-0 right-0 w-1/3 h-full bg-brand-light skew-x-12 opacity-50 -z-0"></div>
 
-      <div className="container mx-auto px-6 relative z-10">
-        <div className="text-center max-w-2xl mx-auto mb-16">
+      <div className="container mx-auto px-4 sm:px-6 relative z-10">
+        <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-16">
           <span className="text-brand-orange font-bold tracking-widest text-sm">ESPECIALIDADES</span>
-          <h2 className="text-4xl font-serif font-bold text-brand-gray mt-2 mb-4">¿En qué puedo ayudarte?</h2>
+          <h2 className="text-3xl sm:text-4xl font-serif font-bold text-brand-gray mt-2 mb-4">¿En qué puedo ayudarte?</h2>
           <p className="text-gray-600">
             Un enfoque científico y humano para tratar patologías digestivas complejas.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
           {SERVICES.map((service) => (
             <div 
               key={service.id} 
@@ -42,7 +42,7 @@ const Services: React.FC = () => {
         </div>
         
         {/* Additional Info Box */}
-        <div className="mt-20 bg-brand-purple rounded-3xl p-8 md:p-12 text-white flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl relative overflow-hidden">
+        <div className="mt-12 sm:mt-20 bg-brand-purple rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-12 text-white flex flex-col md:flex-row items-center justify-between gap-6 sm:gap-8 shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-16 -mt-16"></div>
             
             <div className="relative z-10">

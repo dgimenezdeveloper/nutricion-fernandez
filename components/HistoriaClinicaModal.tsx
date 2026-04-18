@@ -32,10 +32,10 @@ const HistoriaClinicaModal: React.FC<HistoriaClinicaModalProps> = ({ paciente, t
   if (!open || !paciente.id) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-2xl relative animate-fade-in">
-        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-brand-purple text-2xl">×</button>
-        <h2 className="text-2xl font-bold mb-2 text-brand-purple">Historia Clínica</h2>
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl p-5 sm:p-8 w-full max-w-2xl relative animate-fade-in my-auto">
+        <button onClick={onClose} className="absolute top-3 right-3 sm:top-4 sm:right-4 text-gray-400 hover:text-brand-purple text-2xl p-1">×</button>
+        <h2 className="text-xl sm:text-2xl font-bold mb-2 text-brand-purple">Historia Clínica</h2>
         <div className="mb-2 text-lg font-semibold">{paciente.nombre || 'Sin nombre'}</div>
         <div className="mb-4 text-gray-500 text-sm">Fecha de nacimiento: {paciente.fechaNacimiento || 'No especificada'}</div>
         <label className="block mb-2 font-semibold">Notas y evolución:</label>

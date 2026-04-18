@@ -2,6 +2,83 @@
 @tailwind components;
 @tailwind utilities;
 
+html, body {
+  width: 100%;
+  overflow-x: hidden;
+}
+
 html {
   scroll-padding-top: 100px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  position: relative;
+}
+
+/* Smooth transitions for sidebar drawer */
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.2s ease-out;
+  }
+  .animate-slide-up {
+    animation: slideUp 0.5s ease-out;
+  }
+  .animate-scale-up {
+    animation: scaleUp 0.25s ease-out;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleUp {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Prevent body scroll when sidebar open */
+body.sidebar-open {
+  overflow: hidden;
+}
+
+/* Better touch targets */
+@media (max-width: 640px) {
+  button, a, input, select, textarea {
+    min-height: 44px;
+  }
+  input, select, textarea {
+    font-size: 16px; /* Prevent iOS zoom on focus */
+  }
+}
+
+/* Ensure no horizontal scroll on mobile - tables */
+@media (max-width: 1024px) {
+  * {
+    max-width: 100%;
+  }
+  .overflow-x-auto {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch; /* Smooth momentum scrolling on iOS */
+  }
+}
+
+/* Prevent content from exceeding viewport */
+main {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+/* Ensure root container takes full width */
+#root {
+  width: 100%;
+  overflow-x: hidden;
 }

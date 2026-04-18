@@ -33,8 +33,8 @@ const TurnoModal: React.FC<TurnoModalProps> = ({ open, onClose, onSubmit }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md relative animate-fade-in border-t-8 border-brand-orange">
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl p-5 sm:p-8 w-full max-w-md relative animate-fade-in border-t-8 border-brand-orange my-auto">
         <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-brand-purple text-2xl">×</button>
         <h2 className="text-2xl font-bold mb-6 text-brand-purple">Solicitar Turno</h2>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -46,7 +46,7 @@ const TurnoModal: React.FC<TurnoModalProps> = ({ open, onClose, onSubmit }) => {
                 className="pl-10 pr-3 py-2 rounded border w-full focus:ring-2 focus:ring-brand-purple bg-brand-light placeholder:text-gray-400" placeholder="Tu nombre" />
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <div className="flex-1">
               <label className="block text-sm font-semibold mb-1">Email</label>
               <div className="relative">

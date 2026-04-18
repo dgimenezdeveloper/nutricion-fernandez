@@ -63,10 +63,10 @@ const videos = [
 const VideosSection: React.FC = () => (
   <section className="py-16 bg-white">
     <div className="container mx-auto px-6">
-      <h2 className="text-3xl font-serif font-bold text-brand-gray mb-8 text-center">Videos y Charlas</h2>
-      <div className="grid md:grid-cols-3 gap-8">
+      <h2 className="text-2xl sm:text-3xl font-serif font-bold text-brand-gray mb-6 sm:mb-8 text-center">Videos y Charlas</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
         {videos.map((video, idx) => (
-          <div key={idx} className="bg-brand-light rounded-2xl shadow-lg p-6 hover:bg-brand-orange/10 transition-colors border border-gray-100 flex flex-col items-center">
+          <div key={idx} className="bg-brand-light rounded-2xl shadow-lg p-4 sm:p-6 hover:bg-brand-orange/10 transition-colors border border-gray-100 flex flex-col items-center">
             <VideoEmbed url={video.url} title={video.title} description={video.description} />
             <h3 className="font-bold text-lg text-brand-purple mb-2 text-center">{video.title}</h3>
             <p className="text-gray-600 text-sm mb-2 text-center">{video.description}</p>

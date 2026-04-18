@@ -36,11 +36,11 @@ const About: React.FC = () => {
         </div>
 
         {/* Testimonials */}
-        <div className="bg-white rounded-[3rem] p-12 shadow-xl border border-gray-50">
+        <div className="bg-white rounded-2xl sm:rounded-[3rem] p-6 sm:p-8 lg:p-12 shadow-xl border border-gray-50">
           <div className="text-center mb-12">
              <h3 className="text-3xl font-serif font-bold text-brand-gray">Lo que dicen mis pacientes</h3>
           </div>
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
             {REVIEWS.map((review) => (
               <div key={review.id} className="bg-gray-50 p-6 rounded-2xl hover:bg-brand-light transition-colors duration-300">
                 <div className="flex gap-1 text-brand-orange mb-4">

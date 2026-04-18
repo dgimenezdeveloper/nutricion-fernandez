@@ -4,8 +4,8 @@ import { INSTAGRAM_URL, INSTAGRAM_HANDLE } from '../constants';
 
 const Footer: React.FC = () => {
   return (
-    <footer className="bg-brand-gray text-white py-12">
-      <div className="container mx-auto px-6 grid md:grid-cols-3 gap-8">
+    <footer className="bg-brand-gray text-white py-8 sm:py-12">
+      <div className="container mx-auto px-4 sm:px-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
         <div>
           <h4 className="font-serif font-bold text-xl mb-4 text-brand-orange">Lic. Sabrina Fernandez</h4>
           <p className="text-gray-400 text-sm">

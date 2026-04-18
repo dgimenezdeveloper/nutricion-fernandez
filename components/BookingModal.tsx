@@ -45,15 +45,15 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-[#a98fdc]/70 backdrop-blur-[4px] animate-fade-in">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-scale-up relative">
-        <div className="flex justify-between items-center px-8 pt-7 pb-2">
-          <h2 className="text-2xl font-bold font-serif text-brand-purple">Solicitar Turno</h2>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-[#a98fdc]/70 backdrop-blur-[4px] animate-fade-in overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-scale-up relative my-auto">
+        <div className="flex justify-between items-center px-5 sm:px-8 pt-5 sm:pt-7 pb-2">
+          <h2 className="text-xl sm:text-2xl font-bold font-serif text-brand-purple">Solicitar Turno</h2>
           <button onClick={onClose} className="text-brand-purple hover:bg-brand-light p-1 rounded-full transition-colors text-2xl">
             <X size={24} />
           </button>
         </div>
-        <div className="p-8 pt-2">
+        <div className="p-5 sm:p-8 pt-2">
           {status === BookingStatus.SUCCESS ? (
             <div className="text-center py-8">
               <div className="w-16 h-16 bg-green-100 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4">

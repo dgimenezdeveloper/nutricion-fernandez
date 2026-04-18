@@ -15,15 +15,15 @@ const Hero: React.FC<HeroProps> = ({ onOpenBooking }) => {
   };
 
   return (
-    <section id="inicio" className="min-h-screen flex items-center bg-gradient-to-br from-brand-light via-white to-purple-50 pt-20">
-      <div className="container mx-auto px-6 grid md:grid-cols-2 gap-12 items-center">
+    <section id="inicio" className="min-h-screen flex items-center bg-gradient-to-br from-brand-light via-white to-purple-50 pt-20 pb-8">
+      <div className="container mx-auto px-4 sm:px-6 grid md:grid-cols-2 gap-8 sm:gap-12 items-center">
         
         {/* Text Content */}
         <div className="order-2 md:order-1 space-y-6 animate-slide-up">
           <div className="inline-block bg-purple-100 text-brand-purple px-4 py-1 rounded-full text-sm font-semibold tracking-wide">
             ESPECIALISTA EN SALUD DIGESTIVA
           </div>
-          <h1 className="text-5xl md:text-6xl font-serif font-bold text-brand-gray leading-tight">
+          <h1 className="text-3xl sm:text-5xl md:text-6xl font-serif font-bold text-brand-gray leading-tight">
             Recupera tu <span className="text-brand-purple">Bienestar</span> <br/>
             Digestivo
           </h1>
