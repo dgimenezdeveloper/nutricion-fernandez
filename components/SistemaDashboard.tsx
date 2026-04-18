@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import HistoriaClinicaModal from './HistoriaClinicaModal';
-import { Users, CalendarCheck, FileText, LayoutDashboard, UserCircle, PlusCircle, Activity, Edit, Trash2, Info, Download, Menu, X, ChevronLeft, ChevronRight, Clock, Mail, Phone, Calendar, XCircle, RotateCcw, Send } from 'lucide-react';
+import { Users, CalendarCheck, FileText, LayoutDashboard, UserCircle, PlusCircle, Activity, Edit, Trash2, Info, Download, Menu, X, ChevronLeft, ChevronRight, Clock, Mail, Phone, Calendar, XCircle, RotateCcw, Send, CheckCircle } from 'lucide-react';
 import { FaWhatsapp } from 'react-icons/fa';
 import TurnoModal from './TurnoModal';
 import HistorialActividad from './HistorialActividad';
@@ -306,7 +306,8 @@ const SistemaDashboard: React.FC = () => {
         {view === 'resumen' && (
           <div>
             <h2 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8 flex items-center gap-2"><Activity className="text-brand-purple" /> Resumen General</h2>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+            {/* KPIs */}
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 mb-6 sm:mb-8">
               <button className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 text-center flex flex-col items-center hover:shadow-xl hover:ring-2 hover:ring-brand-purple transition-all group focus:outline-none" onClick={handleAddPaciente} title="Agregar Paciente">
                 <Users size={28} className="text-brand-purple mb-2 group-hover:scale-110 transition-transform" />
                 <div className="text-3xl sm:text-4xl font-extrabold text-brand-purple">{totalPacientes}</div>
@@ -316,26 +317,75 @@ const SistemaDashboard: React.FC = () => {
               <button className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 text-center flex flex-col items-center hover:shadow-xl hover:ring-2 hover:ring-brand-orange transition-all group focus:outline-none" onClick={handleAddTurno} title="Agregar Turno">
                 <CalendarCheck size={28} className="text-brand-orange mb-2 group-hover:scale-110 transition-transform" />
                 <div className="text-3xl sm:text-4xl font-extrabold text-brand-orange">{totalTurnos}</div>
-                <div className="text-gray-500 mt-1 sm:mt-2 text-sm sm:text-base">Turnos</div>
+                <div className="text-gray-500 mt-1 sm:mt-2 text-sm sm:text-base">Turnos activos</div>
                 <span className="mt-2 sm:mt-3 inline-flex items-center gap-1 text-xs text-brand-orange font-semibold bg-orange-100 px-2 sm:px-3 py-1 rounded-full group-hover:bg-brand-orange group-hover:text-white transition-colors"><PlusCircle size={14}/> Agregar</span>
               </button>
+              {/* KPIs de estados de turnos */}
+              <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 text-center flex flex-col items-center">
+                <CheckCircle size={28} className="text-green-500 mb-2" />
+                <div className="text-2xl font-extrabold text-green-600">{turnos.filter((t: any) => t.estado === 'confirmado').length}</div>
+                <div className="text-gray-500 mt-1 text-sm">Confirmados</div>
+              </div>
+              <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 text-center flex flex-col items-center">
+                <XCircle size={28} className="text-red-500 mb-2" />
+                <div className="text-2xl font-extrabold text-red-600">{turnos.filter((t: any) => t.estado === 'cancelado').length}</div>
+                <div className="text-gray-500 mt-1 text-sm">Cancelados</div>
+              </div>
+              <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 text-center flex flex-col items-center">
+                <RotateCcw size={28} className="text-brand-purple mb-2" />
+                <div className="text-2xl font-extrabold text-brand-purple">{cancelaciones.filter((c: any) => c.reprogramado).length}</div>
+                <div className="text-gray-500 mt-1 text-sm">Reprogramados</div>
+              </div>
             </div>
+            {/* Accesos rápidos */}
+            <div className="flex flex-wrap gap-3 mb-6">
+              <button onClick={handleAddTurno} className="bg-brand-orange text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 shadow hover:bg-orange-500 transition-colors"><CalendarCheck size={18}/> Nuevo Turno</button>
+              <button 
+                onClick={() => {
+                  setTurnoTab('semana');
+                  setView('turnos');
+                }}
+                className="bg-brand-purple text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 shadow hover:bg-brand-darkPurple transition-colors"
+              >
+                <Calendar size={18}/> Agenda semanal
+              </button>
+              <button onClick={handleAddPaciente} className="bg-brand-light text-brand-purple px-4 py-2 rounded-lg font-semibold flex items-center gap-2 shadow hover:bg-brand-purple/10 transition-colors"><Users size={18}/> Nuevo Paciente</button>
+            </div>
+            {/* Próximos Turnos con color por estado */}
             <h3 className="font-bold text-lg mb-2">Próximos Turnos</h3>
             <ul className="bg-white rounded-xl shadow p-3 sm:p-4">
-              {turnos.filter((t: any) => t.estado !== 'cancelado').map((t: any) => {
+              {turnos.slice(0, 8).map((t: any) => {
                 const paciente = pacientes.find((p: any) => p.id === t.pacienteId);
+                const estado = t.estado || 'desconocido';
+                let estadoColor = estado === 'confirmado' ? 'bg-green-100 text-green-700' : estado === 'cancelado' ? 'bg-red-100 text-red-600 line-through' : 'bg-brand-light text-brand-purple';
+                let estadoLabel = typeof estado === 'string' ? (estado.charAt(0).toUpperCase() + estado.slice(1)) : 'Desconocido';
                 return (
-                  <li key={t.id} className="py-3 border-b last:border-b-0 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
+                  <li key={t.id} className={`py-3 border-b last:border-b-0 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0 ${t.estado === 'cancelado' ? 'opacity-60' : ''}`}>
                     <span className="flex items-center gap-2 flex-wrap">
                       <UserCircle size={18} className="text-brand-purple flex-shrink-0" />
                       <span className="font-semibold text-sm sm:text-base">{paciente?.nombre || t.nombreExterno || 'Paciente externo'}</span>
-                      <span className="text-xs bg-brand-light text-brand-purple px-2 py-0.5 rounded">{t.fecha}{t.hora ? ` ${t.hora}` : ''}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded ${estadoColor}`}>{t.fecha}{t.hora ? ` ${t.hora}` : ''}</span>
                     </span>
                     <span className="text-gray-500 text-sm font-medium pl-7 sm:pl-0">{t.motivo}</span>
+                    <span className={`text-xs font-semibold ml-2 ${estadoColor}`}>{estadoLabel}</span>
                   </li>
                 );
               })}
-              {turnos.filter((t: any) => t.estado !== 'cancelado').length === 0 && <li className="py-4 text-center text-gray-400">No hay turnos registrados.</li>}
+              {turnos.length === 0 && <li className="py-4 text-center text-gray-400">No hay turnos registrados.</li>}
+            </ul>
+            {/* Actividad reciente enriquecida */}
+            <h3 className="font-bold text-lg mt-8 mb-2">Actividad Reciente</h3>
+            <ul className="bg-white rounded-xl shadow p-3 sm:p-4 mb-8">
+              {cancelaciones.slice(-5).reverse().map((c: any) => (
+                <li key={c.id} className="py-3 border-b last:border-b-0 flex items-center gap-3">
+                  {c.reprogramado ? <RotateCcw size={18} className="text-brand-purple" /> : <XCircle size={18} className="text-red-500" />}
+                  <span className="font-semibold text-sm">{c.nombrePaciente}</span>
+                  <span className="text-xs text-gray-500">{c.fecha} {c.hora}</span>
+                  <span className="text-xs px-2 py-0.5 rounded bg-brand-light text-brand-purple">{c.reprogramado ? 'Reprogramado' : 'Cancelado'}</span>
+                  <span className="text-xs text-gray-400 ml-auto">{c.fechaCancelacion}</span>
+                </li>
+              ))}
+              {cancelaciones.length === 0 && <li className="py-4 text-center text-gray-400">Sin actividad reciente.</li>}
             </ul>
             <HistorialActividad />
           </div>
